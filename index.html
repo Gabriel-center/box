@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Box Truss Structure Calculator</title>
+  <!-- html2canvas for download -->
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    /* ====== COLORS: keep palette ====== */
+    :root{
+      --bg:#003366;         /* body background */
+      --ink:#FFFFFF;        /* body text on dark */
+      --card:#FFFFFF;       /* container/card bg */
+      --brand:#0055cc;      /* primary ink on white */
+      --accent:#0077cc;     /* buttons, headers */
+      --muted:#f0f0f0;      /* light gray */
+      --line:#0077cc;       /* borders */
+      --shadow: 0 6px 18px rgba(0,0,0,.12);
+      --radius: 12px;
+      --pad: 16px;
+    }
+
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      font-family: Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      margin:0;
+      padding:20px;
+    }
+
+    /* ====== Page wrapper with responsive columns ====== */
+    .page{
+      width: 100%;
+      max-width: 1200px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    @media (min-width: 980px){
+      .page{
+        grid-template-columns: 380px 1fr;
+        gap: 18px;
+      }
+    }
+
+    /* ====== Panels ====== */
+    .panel{
+      background: var(--card);
+      color: var(--brand);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .panel h1{
+      margin: 0 0 12px;
+      font-size: 24px;
+      color: var(--accent);
+      text-align:center;
+    }
+    .panel h2{
+      margin: 12px 0 8px;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    /* ====== Controls ====== */
+    .row{ display:grid; grid-template-columns: 1fr; gap:8px; margin:12px 0 }
+    label{ font-size: 14px }
+    select,input,button{
+      width:100%;
+      padding:12px;
+      border-radius:8px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:#000;
+      font-size:14px;
+    }
+    input[type="range"]{ accent-color: var(--accent) }
+    .inline{
+      display:grid;
+      grid-template-columns: 1fr 110px;
+      gap:10px;
+      align-items:center;
+    }
+    @media (max-width:480px){
+      .inline{ grid-template-columns: 1fr 96px }
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+    .actions .grow{ flex:1 }
+    button.primary{
+      background: var(--accent);
+      color:#fff;
+      border:1px solid var(--accent);
+      cursor:pointer;
+    }
+    button.primary:disabled{ opacity:.6; cursor:not-allowed }
+
+    /* ====== Right column content ====== */
+    .export-card{
+      background: #fff;
+      border:1px solid var(--muted);
+      border-radius: var(--radius);
+      padding: 14px;
+      color:#000;
+    }
+    .export-header{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin-bottom:10px;
+    }
+    .export-title{ font-weight:bold; color:#000 }
+    .export-header input{
+      flex:1;
+      border:1px solid var(--line);
+      padding:10px;
+      border-radius:8px;
+    }
+
+    /* ====== Grid preview ====== */
+    .preview-wrap{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    #gridWrap{
+      overflow:hidden;
+      border:1px solid #ddd;
+      border-radius:10px;
+      padding:10px;
+      background:#fff;
+      min-height: 220px;
+    }
+    /* Desktop gets a taller preview budget */
+    @media (min-width: 980px){
+      #gridWrap{ min-height: 440px }
+    }
+    #grid{
+      position: relative;
+      white-space: nowrap;
+      width: 100%;
+      height: 100%;
+      transform-origin: top left;
+    }
+
+    /* ====== Truss pieces + colorblind-friendly patterns ====== */
+    .truss-piece{
+      position:absolute;
+      box-sizing:border-box;
+      outline:1px solid #aaa;
+      outline-offset:-1px;
+      /* make patterns crisp */
+      image-rendering: pixelated;
+    }
+
+    /* Base colors (kept) + pattern overlays */
+    /* 2.0 m -> red with diagonal stripes */
+    .color-8{
+      background:
+        repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, rgba(0,0,0,0) 6px 12px),
+        #FF0000;
+    }
+    /* 1.0 m -> orange with crosshatch */
+    .color-4{
+      background:
+        repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 5px, rgba(0,0,0,0) 5px 10px),
+        repeating-linear-gradient(0deg,  rgba(0,0,0,.12) 0 5px, rgba(0,0,0,0) 5px 10px),
+        #ff6600;
+    }
+    /* 0.5 m -> green with dots */
+    .color-2{
+      background:
+        radial-gradient(circle at 6px 6px, rgba(0,0,0,.22) 2px, transparent 2px),
+        radial-gradient(circle at 18px 18px, rgba(0,0,0,.22) 2px, transparent 2px),
+        #008000;
+      background-size: 24px 24px, 24px 24px, auto;
+      background-position: 0 0, 0 0, 0 0;
+    }
+    /* Other -> blue with wide diagonal */
+    .color-1{
+      background:
+        repeating-linear-gradient(135deg, rgba(255,255,255,.25) 0 8px, rgba(255,255,255,0) 8px 16px),
+        #0000FF;
+      cursor:pointer;
+    }
+
+    /* Inner white area */
+    .color-0{ background:#FFFFFF }
+
+    /* ====== Results / checklist ====== */
+    #results{
+      background: var(--muted);
+      border-radius:10px;
+      padding:12px;
+      color:#000;
+      font-size:16px;
+    }
+    .checklist{ margin-top:8px }
+    .checklist-item{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+      white-space:nowrap;
+    }
+    .color-box{
+      width:28px;
+      height:28px;
+      border:1px solid #999;
+      cursor:pointer;
+      border-radius:4px;
+      image-rendering: pixelated;
+    }
+    .checklist-item label{
+      flex:1;
+      cursor:pointer;
+    }
+    .checklist-item label.strikethrough{
+      text-decoration: line-through;
+      color:#666;
+    }
+
+    /* ====== Legend (uses same pattern backgrounds) ====== */
+    .legend{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap:10px;
+      margin-top:6px;
+      font-size:13px;
+      color:#000;
+    }
+    .legend-item{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .legend-swatch{
+      width:18px;
+      height:18px;
+      border:1px solid #777;
+      border-radius:3px;
+    }
+
+    /* ====== Collapsible debug ====== */
+    details{
+      margin-top:12px;
+      background: var(--muted);
+      padding:10px 12px;
+      border-radius:10px;
+      color:#000;
+    }
+    summary{
+      cursor:pointer;
+      font-weight:600;
+      color:#000;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- LEFT: Controls -->
+    <section class="panel" aria-labelledby="calc-title">
+      <h1 id="calc-title">Box Truss Calculator</h1>
+
+      <div class="row">
+        <label for="width">Select Truss Width (meters)</label>
+        <select id="width" aria-describedby="width-help">
+          <option value="0.25" selected>0.25</option>
+        </select>
+        <small id="width-help" style="color:#2b2b2b">Slider steps and numeric inputs follow this width.</small>
+      </div>
+
+      <div class="row">
+        <label for="structureType">Structure Type</label>
+        <select id="structureType">
+          <option value="rectangular">Rectangular</option>
+          <option value="ledPanel">LED Panel</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label>Height (meters)</label>
+        <div class="inline">
+          <input aria-label="Height slider" type="range" id="heightRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Height value" type="number" id="heightNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Length (meters)</label>
+        <div class="inline">
+          <input aria-label="Length slider" type="range" id="lengthRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Length value" type="number" id="lengthNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="calcBtn" class="primary grow">Calculate Grid and Materials</button>
+        <button id="resetBtn" title="Clear">Clear</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: Preview + Results -->
+    <section class="panel">
+      <div class="export-card" id="exportCard">
+        <div class="export-header">
+          <span class="export-title">Event/OS:</span>
+          <input id="eventInput" type="text" placeholder="Optional title for export">
+        </div>
+
+        <div class="preview-wrap">
+          <div id="gridWrap" aria-live="polite" aria-label="Truss preview">
+            <div id="grid"></div>
+          </div>
+
+          <div class="legend" aria-label="Legend">
+            <div class="legend-item">
+              <span class="legend-swatch color-8"></span><span>2.0 m</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch color-4"></span><span>1.0 m</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch color-2"></span><span>0.5 m</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-swatch color-1"></span><span>Other</span>
+            </div>
+          </div>
+
+          <div id="results" aria-label="Materials list"></div>
+
+          <div class="actions">
+            <button id="downloadBtn" class="primary grow">Download Card as PNG</button>
+          </div>
+        </div>
+      </div>
+
+      <details>
+        <summary>Debug Info</summary>
+        <div id="debugInfo" style="font-family: monospace; font-size:12px; white-space: pre-wrap;"></div>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    // ---------- State ----------
+    const state = {
+      trussWidth: 0.25,
+      height: 0,
+      length: 0,
+      cellPxPerMeter: 100,   // base scale before fitting
+      borderMarginPx: 1
+    };
+
+    // ---------- Utilities ----------
+    const el = id => document.getElementById(id);
+    const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
+
+    function syncStepsFromWidth(){
+      const step = parseFloat(el('width').value);
+      ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>{
+        el(id).step = step;
+      });
+    }
+
+    function syncHeight(v){
+      const val = parseFloat(v);
+      state.height = clamp(isNaN(val)?0:val, 0, 1000);
+      el('heightRange').value = state.height;
+      el('heightNum').value = state.height;
+    }
+    function syncLength(v){
+      const val = parseFloat(v);
+      state.length = clamp(isNaN(val)?0:val, 0, 1000);
+      el('lengthRange').value = state.length;
+      el('lengthNum').value = state.length;
+    }
+
+    // Greedy cutter for materials (descending sizes)
+    function calculateMaterialNeeded(dim, materialSizes){
+      const q = {};
+      materialSizes.sort((a,b)=>b-a);
+      materialSizes.forEach(s=>q[s]=0);
+      let remaining = Math.max(0, +dim.toFixed(6));
+      for(const s of materialSizes){
+        while(remaining + 1e-9 >= s){
+          q[s]++;
+          remaining = +(remaining - s).toFixed(6);
+        }
+      }
+      return q;
+    }
+
+    // Build piece array with codes and cell counts
+    function getDistributionArray(quantities, trussWidth){
+      const pieces = [];
+      const sizes = Object.keys(quantities).map(parseFloat).sort((a,b)=>b-a);
+      for(const size of sizes){
+        const count = quantities[size] || 0;
+        const cells = Math.round(size / trussWidth);
+        const code =
+          Math.abs(size - 2) < 1e-6 ? '8' :
+          Math.abs(size - 1) < 1e-6 ? '4' :
+          Math.abs(size - 0.5) < 1e-6 ? '2' :
+          '1';
+        for(let i=0;i<count;i++) pieces.push({code, cells});
+      }
+      return pieces;
+    }
+
+    function createPiece(x,y,w,h,code){
+      const piece = document.createElement('div');
+      piece.className = 'truss-piece color-' + code;
+      piece.style.left = x + 'px';
+      piece.style.top = y + 'px';
+      piece.style.width = w + 'px';
+      piece.style.height = h + 'px';
+      return piece;
+    }
+
+    // Fit grid into container by scaling if needed
+    function fitGridToWrap(naturalW, naturalH){
+      const wrap = el('gridWrap');
+      const padding = 20; // breathing room
+      const availW = wrap.clientWidth - padding;
+      // Height budget depends on media query; compute from actual
+      const availH = wrap.clientHeight - padding || 440;
+      const sx = availW / naturalW;
+      const sy = availH / naturalH;
+      const scale = Math.min(1, sx, sy);
+      const grid = el('grid');
+      grid.style.width = naturalW + 'px';
+      grid.style.height = naturalH + 'px';
+      grid.style.transform = 'scale(' + scale + ')';
+      // Adjust wrapper min height to keep content visible
+      const usedH = Math.min(naturalH * scale + 12, Math.max(availH, 220));
+      wrap.style.minHeight = usedH + 'px';
+    }
+
+    // Build grid and results
+    function generateGrid(){
+      const widthVal = parseFloat(el('width').value);
+      const heightVal = state.height;
+      const lengthVal = state.length;
+
+      const resultsEl = el('results');
+      resultsEl.innerHTML = '';
+
+      if(lengthVal < widthVal*2 || heightVal < widthVal*2){
+        resultsEl.innerHTML =
+          '<div><strong>Tip:</strong> length and height must be at least 2× the truss width to form a rectangle.</div>';
+      }
+
+      // internal spans
+      let innerL = Math.max(0, lengthVal - widthVal*2);
+      let innerH = Math.max(0, heightVal - widthVal*2);
+
+      const materialSizes = [2, 1, 0.5, widthVal];
+
+      const qL = calculateMaterialNeeded(innerL, materialSizes);
+      const qH = calculateMaterialNeeded(innerH, materialSizes);
+
+      const topPieces    = getDistributionArray(qL, widthVal);
+      const bottomPieces = getDistributionArray(qL, widthVal);
+      const leftPieces   = getDistributionArray(qH, widthVal);
+      const rightPieces  = getDistributionArray(qH, widthVal);
+
+      let cellsX = 2; // two corners
+      topPieces.forEach(p=>cellsX += p.cells);
+      let cellsY = 2;
+      leftPieces.forEach(p=>cellsY += p.cells);
+
+      const cellSize = state.cellPxPerMeter * widthVal; // px per truss width
+      const m = state.borderMarginPx;
+      const naturalW = cellsX * cellSize + 2*m;
+      const naturalH = cellsY * cellSize + 2*m;
+
+      const grid = el('grid');
+      grid.innerHTML = '';
+
+      // Corners
+      grid.appendChild(createPiece(m, m, cellSize, cellSize, '1'));
+      grid.appendChild(createPiece(m + (cellsX-1)*cellSize, m, cellSize, cellSize, '1'));
+      grid.appendChild(createPiece(m, m + (cellsY-1)*cellSize, cellSize, cellSize, '1'));
+      grid.appendChild(createPiece(m + (cellsX-1)*cellSize, m + (cellsY-1)*cellSize, cellSize, cellSize, '1'));
+
+      // Top border
+      let x = m + cellSize;
+      topPieces.forEach(p=>{
+        const w = p.cells * cellSize;
+        grid.appendChild(createPiece(x, m, w, cellSize, p.code));
+        x += w;
+      });
+
+      // Bottom border
+      x = m + cellSize;
+      let yBottom = m + (cellsY-1)*cellSize;
+      bottomPieces.forEach(p=>{
+        const w = p.cells * cellSize;
+        grid.appendChild(createPiece(x, yBottom, w, cellSize, p.code));
+        x += w;
+      });
+
+      // Left border
+      let y = m + cellSize;
+      leftPieces.forEach(p=>{
+        const h = p.cells * cellSize;
+        grid.appendChild(createPiece(m, y, cellSize, h, p.code));
+        y += h;
+      });
+
+      // Right border
+      y = m + cellSize;
+      let xRight = m + (cellsX-1)*cellSize;
+      rightPieces.forEach(p=>{
+        const h = p.cells * cellSize;
+        grid.appendChild(createPiece(xRight, y, cellSize, h, p.code));
+        y += h;
+      });
+
+      // Inner fill
+      const inner = document.createElement('div');
+      inner.className = 'truss-piece color-0';
+      inner.style.left = (m + cellSize) + 'px';
+      inner.style.top  = (m + cellSize) + 'px';
+      inner.style.width  = ((cellsX-2)*cellSize) + 'px';
+      inner.style.height = ((cellsY-2)*cellSize) + 'px';
+      grid.appendChild(inner);
+
+      // Fit to wrap
+      fitGridToWrap(naturalW, naturalH);
+
+      // Materials checklist
+      const totals = {};
+      materialSizes.forEach(s=>{
+        totals[s] = 2 * ((qL[s]||0) + (qH[s]||0));
+      });
+      // extra corners and feet
+      totals[widthVal] = (totals[widthVal] || 0) + 4;
+      totals[0.5] = (totals[0.5] || 0) + 2;
+
+      const ordered = Object.keys(totals).map(parseFloat).sort((a,b)=>a-b);
+      let checklist = '';
+      checklist += '<div><strong>Materials</strong></div>';
+      checklist += '<div class="checklist">';
+      ordered.forEach(size=>{
+        const qty = totals[size];
+        const colorClass =
+          Math.abs(size - 2) < 1e-6 ? 'color-8' :
+          Math.abs(size - 1) < 1e-6 ? 'color-4' :
+          Math.abs(size - 0.5) < 1e-6 ? 'color-2' :
+          'color-1';
+        checklist += `
+          <div class="checklist-item">
+            <div class="color-box ${colorClass}" onclick="toggleStrikethrough(this)" aria-hidden="true"></div>
+            <label onclick="toggleStrikethrough(this)">${qty} units of ${size} meters</label>
+          </div>
+        `;
+      });
+      checklist += '</div>';
+
+      const dims = `<div style="margin-top:8px;"><strong>Outer size:</strong> ${lengthVal.toFixed(2)} m × ${heightVal.toFixed(2)} m &nbsp;|&nbsp; <strong>Truss width:</strong> ${widthVal} m</div>`;
+      resultsEl.innerHTML = dims + checklist;
+
+      // Debug
+      let dbg = '';
+      dbg += `topPieces: ${JSON.stringify(topPieces)}\n`;
+      dbg += `leftPieces: ${JSON.stringify(leftPieces)}\n`;
+      dbg += `cellsX x cellsY: ${cellsX} x ${cellsY}\n`;
+      dbg += `cellSize(px): ${cellSize}\n`;
+      dbg += `naturalW x naturalH(px): ${naturalW} x ${naturalH}\n`;
+      el('debugInfo').textContent = dbg;
+    }
+
+    // Checklist toggle
+    function toggleStrikethrough(elm){
+      const label = elm.tagName === 'LABEL' ? elm : elm.nextElementSibling;
+      label.classList.toggle('strikethrough');
+    }
+    window.toggleStrikethrough = toggleStrikethrough;
+
+    // Download PNG (card)
+    function downloadCard(){
+      const card = el('exportCard');
+      const title = (el('eventInput').value || 'truss-card').trim().replace(/[^\w\-]+/g,'_');
+      // ensure white bg
+      const prev = card.style.backgroundColor;
+      card.style.backgroundColor = '#FFFFFF';
+      html2canvas(card, {backgroundColor:'#FFFFFF', scale:2, useCORS:true}).then(canvas=>{
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${title}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        card.style.backgroundColor = prev || '';
+      });
+    }
+
+    // ---------- Events ----------
+    el('width').addEventListener('change', ()=>{
+      state.trussWidth = parseFloat(el('width').value);
+      syncStepsFromWidth();
+    });
+
+    // Height sync
+    el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
+    el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
+
+    // Length sync
+    el('lengthRange').addEventListener('input', e=> syncLength(e.target.value));
+    el('lengthNum').addEventListener('input',   e=> syncLength(e.target.value));
+
+    // Buttons
+    el('calcBtn').addEventListener('click', generateGrid);
+    el('resetBtn').addEventListener('click', ()=>{
+      syncHeight(0); syncLength(0);
+      el('grid').innerHTML = '';
+      el('results').innerHTML = '';
+      el('debugInfo').textContent = '';
+      el('eventInput').value = '';
+      el('gridWrap').style.minHeight = window.matchMedia('(min-width:980px)').matches ? '440px' : '220px';
+    });
+    el('downloadBtn').addEventListener('click', downloadCard);
+
+    // Initial setup
+    (function init(){
+      syncStepsFromWidth();
+      syncHeight(0);
+      syncLength(0);
+    })();
+
+    // Refit on resize
+    window.addEventListener('resize', ()=>{
+      if(el('grid').children.length) generateGrid();
+    });
+  </script>
+</body>
+</html>
