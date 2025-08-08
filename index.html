@@ -9,27 +9,84 @@
     :root{
       --bg:#003366; --ink:#FFFFFF; --card:#FFFFFF; --brand:#0055cc; --accent:#0077cc;
       --muted:#f0f0f0; --line:#0077cc; --shadow:0 6px 18px rgba(0,0,0,.12); --radius:12px;
+
+      /* Tipografia responsiva */
+      --fs-base: clamp(15px, 1.1vw + 0.6rem, 16px);
+      --fs-h1: clamp(20px, 1.2vw + 1rem, 22px);
+
+      /* Controles */
+      --field-pad: 12px;
+      --track-h: 12px;
+      --thumb: 26px;
     }
+
+    @media (max-width:640px){
+      :root{
+        --fs-base: clamp(16px, 3.8vw, 18px);
+        --fs-h1: clamp(20px, 4.6vw, 24px);
+        --field-pad: 14px;
+        --track-h: 16px;
+        --thumb: 32px;
+      }
+    }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       font-family:Arial,sans-serif; color:var(--ink); background:var(--bg);
       display:flex; justify-content:center; align-items:flex-start; margin:0; padding:16px;
+      font-size: var(--fs-base);
+      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .page{width:100%; max-width:1200px; display:grid; grid-template-columns:1fr; gap:16px}
     @media (min-width:980px){ .page{grid-template-columns:380px 1fr; gap:18px} }
 
-    .panel{background:var(--card); color:var(--brand); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px}
-    .panel h1{margin:0 0 10px; font-size:22px; color:var(--accent); text-align:center}
+    .panel{
+      background:var(--card); color:var(--brand); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:16px;
+    }
+    .panel h1{margin:0 0 10px; font-size:var(--fs-h1); color:var(--accent); text-align:center}
 
     .row{display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0}
-    label{font-size:14px}
+    label{font-size:0.95em}
+
     select,input,button{
-      width:100%; padding:12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:#000; font-size:14px;
+      width:100%; padding:var(--field-pad); border-radius:8px; border:1px solid var(--line);
+      background:#fff; color:#000; font-size:1em;
+      touch-action: manipulation;
     }
-    input[type="range"]{accent-color:var(--accent)}
-    .inline{display:grid; grid-template-columns:1fr 140px; gap:10px; align-items:center}
+
+    /* Slider mais confortável (WebKit) */
+    input[type="range"]{
+      -webkit-appearance: none; appearance: none;
+      width:100%; background: transparent; height: calc(var(--thumb) + 6px);
+    }
+    input[type="range"]::-webkit-slider-runnable-track{
+      height: var(--track-h); background: #e6f0ff; border:1px solid var(--line);
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb{
+      -webkit-appearance: none;
+      width: var(--thumb); height: var(--thumb); background: var(--accent);
+      border-radius: 50%; border:2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+      margin-top: calc((var(--track-h) - var(--thumb))/2);
+      cursor: pointer;
+    }
+    /* Firefox */
+    input[type="range"]::-moz-range-track{
+      height: var(--track-h); background: #e6f0ff; border:1px solid var(--line);
+      border-radius: 999px;
+    }
+    input[type="range"]::-moz-range-thumb{
+      width: var(--thumb); height: var(--thumb); background: var(--accent);
+      border:2px solid #fff; border-radius:50%; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+      cursor: pointer;
+    }
+
+    .inline{display:grid; grid-template-columns:1fr 160px; gap:10px; align-items:center}
+    @media (max-width:640px){ .inline{grid-template-columns:1fr; gap:8px} }
 
     .actions{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap}
     .actions .grow{flex:1; min-width:180px}
@@ -37,29 +94,31 @@
     button.primary:disabled{opacity:.6; cursor:not-allowed}
 
     @media (max-width:640px){
-      .panel{padding:12px}
-      .inline{grid-template-columns:1fr}
-      select,input,button{padding:10px; font-size:16px}
+      .panel{padding:14px}
       .actions{gap:8px}
+      .actions .grow{min-width:unset}
     }
 
-    #snapNote{font-size:12px; color:#333; min-height:18px}
+    /* Aviso de arredondamento */
+    #snapNote{font-size:0.85em; color:#333; min-height:1.3em}
 
+    /* Card exportável */
     .export-card{background:#fff; border:1px solid var(--muted); border-radius:var(--radius); padding:12px; color:#000}
     .export-header{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
     .export-title{font-weight:bold; color:#000}
-    .export-header input{flex:1 1 280px; border:1px solid var(--line); padding:10px; border-radius:8px; min-width:200px}
+    .export-header input{flex:1 1 280px; border:1px solid var(--line); padding:var(--field-pad); border-radius:8px; min-width:200px}
 
     .preview-wrap{display:grid; grid-template-columns:1fr; gap:12px}
     #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
     #grid{position:relative; width:100%}
 
-    #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:16px}
+    /* Materiais */
+    #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:1em}
     .results-title{
       display:flex; align-items:center; gap:8px; margin:2px 0 10px;
     }
     .results-title .t-left{
-      font-size:18px; font-weight:800; color:var(--accent);
+      font-size:1.1em; font-weight:800; color:var(--accent);
       text-transform:uppercase; letter-spacing:.5px;
     }
     .results-title .title-rule{ flex:1; height:1px; background:var(--line); opacity:.35; }
@@ -68,20 +127,20 @@
     .checklist{
       display:grid;
       grid-template-columns:repeat(2, minmax(0,1fr));
-      gap:12px 16px;
-      margin-top:10px;
+      gap:12px 16px; margin-top:10px;
     }
     .checklist-item{
-      display:flex; align-items:center; gap:10px; cursor:pointer;
-      user-select:none;
+      display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;
+      padding:2px 0;
     }
-    .checklist-item .sw{width:32px; height:32px; display:inline-block; flex:0 0 32px}
+    .checklist-item .sw{width:34px; height:34px; display:inline-block; flex:0 0 34px}
     .checklist-item label{flex:1}
     .checklist-item.off label{text-decoration:line-through; color:#666}
     .checklist-item.off .sw{opacity:.45}
 
     @media (max-width:520px){
       .checklist{grid-template-columns:1fr}
+      .checklist-item .sw{width:36px; height:36px}
     }
 
     details{margin-top:12px; background:var(--muted); padding:10px 12px; border-radius:10px; color:#000}
@@ -90,6 +149,7 @@
 </head>
 <body>
   <div class="page">
+    <!-- CONTROLES -->
     <section class="panel" aria-labelledby="calc-title">
       <h1 id="calc-title">Calculadora de Treliça Box</h1>
 
@@ -102,6 +162,7 @@
         <small id="width-help" style="color:#2b2b2b">O passo dos controles segue esta largura.</small>
       </div>
 
+      <!-- Comprimento (horizontal) primeiro -->
       <div class="row">
         <label>Comprimento (metros)</label>
         <div class="inline">
@@ -126,6 +187,7 @@
       </div>
     </section>
 
+    <!-- PRÉVIA + RESULTADOS -->
     <section class="panel">
       <div class="export-card" id="exportCard">
         <div class="export-header">
@@ -138,10 +200,11 @@
             <div id="grid"></div>
           </div>
 
-        <div id="results" aria-label="Lista de materiais"></div>
+          <div id="results" aria-label="Lista de materiais"></div>
         </div>
       </div>
 
+      <!-- Botão de download FORA do card -->
       <div class="actions">
         <button id="downloadBtn" class="primary grow">Baixar cartão como PNG</button>
       </div>
@@ -154,7 +217,7 @@
   </div>
 
   <script>
-    const VIEWPORT_CAP = 0.8;
+    const VIEWPORT_CAP = 0.8; // mantém o desktop como está
 
     const state = { trussWidth:0.25, height:0, length:0, pxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0 };
     const el = id => document.getElementById(id);
@@ -169,14 +232,34 @@
       ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>el(id).step=s);
     }
 
-    function setHeightFromSlider(v){ const val = clamp(parseFloat(v)||0, 0, 5); state.height = val; el('heightRange').value = val; el('heightNum').value = val; }
-    function setHeightFromNumber(v){ const val = Math.max(0, parseFloat(v)||0); state.height = val; el('heightNum').value = val; el('heightRange').value = Math.min(5, val); }
-    function setLengthFromSlider(v){ const val = clamp(parseFloat(v)||0, 0, 5); state.length = val; el('lengthRange').value = val; el('lengthNum').value = val; }
-    function setLengthFromNumber(v){ const val = Math.max(0, parseFloat(v)||0); state.length = val; el('lengthNum').value = val; el('lengthRange').value = Math.min(5, val); }
+    // Sliders com cap 5; números podem passar de 5 (soft max)
+    function setHeightFromSlider(v){
+      const val = clamp(parseFloat(v)||0, 0, 5);
+      state.height = val;
+      el('heightRange').value = val;
+      el('heightNum').value = val;
+    }
+    function setHeightFromNumber(v){
+      const val = Math.max(0, parseFloat(v)||0);
+      state.height = val;
+      el('heightNum').value = val;
+      el('heightRange').value = Math.min(5, val);
+    }
+    function setLengthFromSlider(v){
+      const val = clamp(parseFloat(v)||0, 0, 5);
+      state.length = val;
+      el('lengthRange').value = val;
+      el('lengthNum').value = val;
+    }
+    function setLengthFromNumber(v){
+      const val = Math.max(0, parseFloat(v)||0);
+      state.length = val;
+      el('lengthNum').value = val;
+      el('lengthRange').value = Math.min(5, val);
+    }
 
     // ---------- Solver de construtibilidade ----------
-    // Passo base 0,05 m (m.d.c. de 2, 1, 0,5 e 0,25 / 0,15)
-    const STEP = 0.05;
+    const STEP = 0.05; // m.d.c. dos comprimentos
     function toUnits(m){ return Math.max(0, Math.floor((m + 1e-9)/STEP)); }
     function fromUnits(u){ return u * STEP; }
 
@@ -198,16 +281,14 @@
       while(best >= 0 && !dp[best]) best--;
       if (best < 0) return { length:0, pieces:[] };
 
-      // reconstrói uma lista de peças (ordem arbitrária)
       const pieces = [];
       let u = best;
       while(u > 0){
         const k = prev[u];
-        if (k < 0) break; // robustez
-        pieces.push({ meters: den[k]*STEP }); // guardo o tamanho em metros
+        if (k < 0) break;
+        pieces.push({ meters: den[k]*STEP });
         u -= den[k];
       }
-      // ordena decrescente só para ficar mais bonito no desenho
       pieces.sort((a,b)=>b.meters - a.meters);
       return { length: fromUnits(best), pieces };
     }
@@ -230,7 +311,6 @@
       }
       if (cur.length) groups.push(cur);
 
-      // se faltaram grupos, corta grupos grandes em fronteiras de peça
       while (groups.length < segMin){
         let idx = 0, bestLen = 0;
         for (let i=0;i<groups.length;i++){
@@ -250,7 +330,6 @@
         if (L1>0 && L2>0 && L1<=maxPer && L2<=maxPer) groups.splice(idx,1,g1,g2); else break;
       }
 
-      // se sobrou demais, tenta juntar adjacentes sem passar de 4m
       let changed = true;
       while (groups.length > segMin && changed){
         changed = false;
@@ -273,7 +352,7 @@
       return { groups, boundaries, target };
     }
 
-    // ---------- SVG ----------
+    // ---------- SVG helpers ----------
     const SVGNS = 'http://www.w3.org/2000/svg';
     function makePatternDefs(){
       const defs = document.createElementNS(SVGNS,'defs');
@@ -305,7 +384,7 @@
       svg.appendChild(g);
     }
 
-    // ---------- Layout ----------
+    // ---------- Layout helpers ----------
     function boxMetrics(elm, view=window){
       const cs = view.getComputedStyle(elm);
       const padL = parseFloat(cs.paddingLeft)||0, padR = parseFloat(cs.paddingRight)||0;
@@ -319,23 +398,37 @@
       const wrap = el('gridWrap');
       const card = el('exportCard');
       const m = boxMetrics(wrap);
+
       let scale = m.contentW / nW;
       const capH = window.innerHeight * VIEWPORT_CAP;
       const totalH = nH * scale + m.padT + m.padB + m.borT + m.borB;
-      if (totalH > capH) scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;
+      if (totalH > capH) {
+        scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;
+      }
+
       const targetW = Math.max(1, Math.round(nW * scale));
       const targetH = Math.max(1, Math.round(nH * scale));
-      svg.setAttribute('width', targetW); svg.setAttribute('height', targetH);
-      wrap.style.minHeight = (targetH + m.padT + m.padB) + 'px'; wrap.style.overflow = 'hidden';
+
+      svg.setAttribute('width', targetW);
+      svg.setAttribute('height', targetH);
+      wrap.style.minHeight = (targetH + m.padT + m.padB) + 'px';
+      wrap.style.overflow = 'hidden';
+
       wrap.dataset.scale = String(scale);
-      wrap.dataset.nw = String(nW); wrap.dataset.nh = String(nH);
-      wrap.dataset.tW = String(targetW); wrap.dataset.tH = String(targetH);
-      wrap.dataset.padT = String(m.padT); wrap.dataset.padB = String(m.padB);
-      wrap.dataset.padL = String(m.padL); wrap.dataset.padR = String(m.padR);
-      wrap.dataset.borL = String(m.borL); wrap.dataset.borR = String(m.borR);
+      wrap.dataset.nw = String(nW);
+      wrap.dataset.nh = String(nH);
+      wrap.dataset.tW = String(targetW);
+      wrap.dataset.tH = String(targetH);
+      wrap.dataset.padT = String(m.padT);
+      wrap.dataset.padB = String(m.padB);
+      wrap.dataset.padL = String(m.padL);
+      wrap.dataset.padR = String(m.padR);
+      wrap.dataset.borL = String(m.borL);
+      wrap.dataset.borR = String(m.borR);
       wrap.dataset.cardW = String(card.getBoundingClientRect().width);
     }
 
+    // ---------- Geração ----------
     function gerarGrade(){
       const q = parseFloat(el('width').value);
       const sizes = [2,1,0.5,q];
@@ -346,7 +439,7 @@
       const PPM = state.pxPerMeter;
       const m = state.borderMarginPx;
 
-      // Alvos internos (não-negativos)
+      // Alvos internos
       const targetInnerL = Math.max(0, Wext - 2*q);
       const targetInnerV = Math.max(0, Hext - 2*q);
 
@@ -363,7 +456,7 @@
       if (!near(Hused, Hext)) note.push(`Altura ajustada de ${fmt(Hext)} m para ${fmt(Hused)} m montável`);
       el('snapNote').textContent = note.join(' · ');
 
-      // Segmentação por construtibilidade: grupos de peças ≤ 4m
+      // Segmentação: cada trecho ≤ 4 m, número mínimo pela largura externa
       const segMin = Math.max(1, Math.ceil((Wused + 1e-9) / 4));
       const { groups, boundaries } = partitionPiecesEven(hPiecesAll, segMin, 4, 0.25);
       const supports = Math.max(0, groups.length - 1);
@@ -378,7 +471,7 @@
 
       // SVG
       const grid = el('grid'); grid.innerHTML='';
-      const svg = document.createElementNS(SVGNS,'svg');
+      const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
       svg.setAttribute('viewBox', `0 0 ${nW} ${nH}`);
       svg.setAttribute('preserveAspectRatio','xMinYMin meet');
       svg.appendChild(makePatternDefs());
@@ -393,7 +486,7 @@
       addPiece(svg, leftX, bottomY, cornerPx, cornerPx, '1');
       addPiece(svg, rightX, bottomY, cornerPx, cornerPx, '1');
 
-      // Topo/Base caminhando grupos
+      // Topo/Base
       let xTop = leftX + cornerPx;
       groups.forEach(group=>{
         group.forEach(p=>{
@@ -405,7 +498,7 @@
         });
       });
 
-      // Coluna helper
+      // Colunas
       function drawColumn(x){
         let y = topY + cornerPx;
         vPieces.forEach(p=>{
@@ -415,7 +508,6 @@
           y += hp;
         });
       }
-      // Laterais
       drawColumn(leftX);
       drawColumn(rightX);
 
@@ -424,7 +516,7 @@
         addPiece(svg, leftX + cornerPx, topY + cornerPx, innerPxX, innerPxY, '0');
       }
 
-      // Suportes nas fronteiras de grupos
+      // Suportes nas fronteiras
       boundaries.forEach(bm=>{
         const x = leftX + cornerPx + bm * PPM;
         drawColumn(x);
@@ -434,21 +526,20 @@
 
       sizeSVGToFit(svg, nW, nH);
 
-      // ===== Materiais (conta por comprimentos efetivos) =====
-      const totals = {}; sizes.forEach(s=>totals[s]=0);
+      // ===== Materiais =====
+      const sizesArr = [2,1,0.5,q];
+      const totals = {}; sizesArr.forEach(s=>totals[s]=0);
 
-      // Verticais: colunas * peças(v)
+      // Verticais
       const colunas = supports + 2;
-      const vQuant = {};
-      sizes.forEach(s=>vQuant[s]=0);
+      const vQuant = {}; sizesArr.forEach(s=>vQuant[s]=0);
       vPieces.forEach(p=>{ vQuant[p.meters] = (vQuant[p.meters]||0) + 1; });
-      sizes.forEach(s=>{ totals[s] += colunas * (vQuant[s]||0); });
+      sizesArr.forEach(s=>{ totals[s] += colunas * (vQuant[s]||0); });
 
-      // Horizontais: soma por grupo (topo + base)
-      const hQuant = {};
-      sizes.forEach(s=>hQuant[s]=0);
+      // Horizontais
+      const hQuant = {}; sizesArr.forEach(s=>hQuant[s]=0);
       groups.forEach(g=> g.forEach(p=>{ hQuant[p.meters] = (hQuant[p.meters]||0) + 1; }));
-      sizes.forEach(s=>{ totals[s] += 2 * (hQuant[s]||0); });
+      sizesArr.forEach(s=>{ totals[s] += 2 * (hQuant[s] || 0); });
 
       // Cantos
       totals[q] = (totals[q]||0) + 4;
@@ -458,7 +549,7 @@
       const weightCount = colunas * 2;
 
       // Swatches/Ícones
-      const sw = (code,side=32)=>(
+      const sw = (code,side=34)=>(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">
            <defs>
              <pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern>
@@ -471,7 +562,7 @@
            <rect x="0.5" y="0.5" width="${side-1}" height="${side-1}" fill="none" stroke="#777" stroke-width="1"/>
          </svg>`
       );
-      const footIcon = (side=32)=>(
+      const footIcon = (side=34)=>(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28">
           <rect x="5" y="5" width="6" height="16" fill="#555"/>
           <rect x="3" y="20" width="22" height="4" rx="1" ry="1" fill="#333"/>
@@ -479,7 +570,7 @@
           <rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/>
         </svg>`
       );
-      const weightIcon = (side=32)=>(
+      const weightIcon = (side=34)=>(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28">
           <rect x="6" y="12" width="16" height="4" rx="1" ry="1" fill="#444"/>
           <rect x="3" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/>
@@ -504,18 +595,18 @@
         const code = size>=2?'8':size>=1?'4':size>=0.5?'2':'1';
         list += `
           <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
-            <span class="sw">${sw(code,32)}</span>
+            <span class="sw">${sw(code,34)}</span>
             <label>${fmtInt(qnt)} unidades de ${fmt(size)} metros</label>
           </div>`;
       });
 
       list += `
         <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
-          <span class="sw">${footIcon(32)}</span>
+          <span class="sw">${footIcon(34)}</span>
           <label>${fmtInt(feetCount)} Pés (0,5)</label>
         </div>
         <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
-          <span class="sw">${weightIcon(32)}</span>
+          <span class="sw">${weightIcon(34)}</span>
           <label>${fmtInt(weightCount)} Pesos</label>
         </div>`;
 
@@ -524,9 +615,10 @@
       el('results').innerHTML = list;
     }
 
+    // Toggle riscado no item
     function toggleItem(node){ node.classList.toggle('off'); }
 
-    // ---------- Download idêntico ao que você vê ----------
+    // ---------- Download idêntico ao visto ----------
     function baixarCartao(){
       const card = el('exportCard');
       const wrapLive = el('gridWrap');
@@ -577,6 +669,7 @@
 
     // Eventos
     el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
+
     el('heightRange').addEventListener('input', e=> setHeightFromSlider(e.target.value));
     el('heightNum').addEventListener('input',   e=> setHeightFromNumber(e.target.value));
     el('lengthRange').addEventListener('input', e=> setLengthFromSlider(e.target.value));
