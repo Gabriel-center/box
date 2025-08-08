@@ -1,66 +1,409 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Calculadora de Treliça Box</title>
-  <!-- html2canvas para download -->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
-    /* ====== PALETA (mantida) ====== */
     :root{
-      --bg:#003366;         /* fundo da página */
-      --ink:#FFFFFF;        /* texto sobre fundo escuro */
-      --card:#FFFFFF;       /* cartões/brancos */
-      --brand:#0055cc;      /* textos principais */
-      --accent:#0077cc;     /* botões/títulos */
-      --muted:#f0f0f0;      /* cinza claro */
-      --line:#0077cc;       /* bordas */
-      --shadow: 0 6px 18px rgba(0,0,0,.12);
-      --radius: 12px;
+      --bg:#003366; --ink:#FFFFFF; --card:#FFFFFF; --brand:#0055cc; --accent:#0077cc;
+      --muted:#f0f0f0; --line:#0077cc; --shadow:0 6px 18px rgba(0,0,0,.12); --radius:12px;
     }
-
-    *{ box-sizing:border-box }
-    html,body{ height:100% }
+    *{box-sizing:border-box}
+    html,body{height:100%}
     body{
-      font-family: Arial, sans-serif;
-      color: var(--ink);
-      background: var(--bg);
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-      margin:0;
-      padding:16px;
+      font-family:Arial,sans-serif; color:var(--ink); background:var(--bg);
+      display:flex; justify-content:center; align-items:flex-start; margin:0; padding:16px;
     }
 
-    /* ====== Layout responsivo ====== */
-    .page{
-      width:100%;
-      max-width:1200px;
-      display:grid;
-      grid-template-columns:1fr;
-      gap:16px;
+    .page{width:100%; max-width:1200px; display:grid; grid-template-columns:1fr; gap:16px}
+    @media (min-width:980px){ .page{grid-template-columns:380px 1fr; gap:18px} }
+
+    .panel{background:var(--card); color:var(--brand); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px}
+    .panel h1{margin:0 0 10px; font-size:22px; color:var(--accent); text-align:center}
+
+    .row{display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0}
+    label{font-size:14px}
+    select,input,button{
+      width:100%; padding:12px; border-radius:8px; border:1px solid var(--line); background:#fff; color:#000; font-size:14px;
     }
-    @media (min-width: 980px){
-      .page{
-        grid-template-columns: 380px 1fr; /* controles à esquerda, prévia à direita */
-        gap:18px;
+    input[type="range"]{accent-color:var(--accent)}
+    .inline{display:grid; grid-template-columns:1fr 110px; gap:10px; align-items:center}
+
+    .actions{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap}
+    .actions .grow{flex:1; min-width:180px}
+    button.primary{background:var(--accent); color:#fff; border:1px solid var(--accent); cursor:pointer}
+    button.primary:disabled{opacity:.6; cursor:not-allowed}
+
+    @media (max-width:640px){
+      .panel{padding:12px}
+      .inline{grid-template-columns:1fr}
+      select,input,button{padding:10px; font-size:16px}
+      .actions{gap:8px}
+    }
+
+    /* Card exportável (apenas título, desenho, tamanho externo, materiais) */
+    .export-card{background:#fff; border:1px solid var(--muted); border-radius:var(--radius); padding:12px; color:#000}
+    .export-header{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+    .export-title{font-weight:bold; color:#000}
+    .export-header input{flex:1 1 280px; border:1px solid var(--line); padding:10px; border-radius:8px; min-width:200px}
+
+    .preview-wrap{display:grid; grid-template-columns:1fr; gap:12px}
+    #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
+    #grid{position:relative; width:100%; height:100%; transform-origin:top left}
+
+    /* Itens/legenda fora do card */
+    #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:16px}
+    .checklist{margin-top:8px}
+    .checklist-item{display:flex; align-items:center; gap:10px; margin-bottom:8px}
+    .checklist-item .sw{display:inline-block; width:20px; height:20px}
+    .checklist-item label{flex:1; cursor:pointer}
+    .checklist-item label.strikethrough{text-decoration:line-through; color:#666}
+
+    .legend{display:grid; grid-template-columns:repeat(4, minmax(120px,1fr)); gap:10px; margin-top:6px; font-size:13px; color:#000}
+    .legend-item{display:flex; gap:8px; align-items:center}
+    .legend-swatch{width:18px; height:18px}
+
+    details{margin-top:12px; background:var(--muted); padding:10px 12px; border-radius:10px; color:#000}
+    summary{cursor:pointer; font-weight:600; color:#000}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- CONTROLES -->
+    <section class="panel" aria-labelledby="calc-title">
+      <h1 id="calc-title">Calculadora de Treliça Box</h1>
+
+      <div class="row">
+        <label for="width">Largura do perfil (metros)</label>
+        <select id="width" aria-describedby="width-help">
+          <option value="0.25" selected>0.25</option>
+        </select>
+        <small id="width-help" style="color:#2b2b2b">O passo dos controles segue esta largura.</small>
+      </div>
+
+      <div class="row">
+        <label>Altura (metros)</label>
+        <div class="inline">
+          <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Comprimento (metros)</label>
+        <div class="inline">
+          <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="calcBtn" class="primary grow">Calcular grade e materiais</button>
+        <button id="resetBtn" class="grow" title="Limpar">Limpar</button>
+      </div>
+    </section>
+
+    <!-- PRÉVIA + RESULTADOS (só o essencial dentro do card) -->
+    <section class="panel">
+      <div class="export-card" id="exportCard">
+        <div class="export-header">
+          <span class="export-title">Evento/OS:</span>
+          <input id="eventInput" type="text" placeholder="Opcional — título do cartão">
+        </div>
+
+        <div class="preview-wrap">
+          <div id="gridWrap" aria-live="polite" aria-label="Prévia da treliça">
+            <div id="grid"></div>
+          </div>
+
+          <div id="results" aria-label="Lista de materiais"></div>
+        </div>
+      </div>
+
+      <!-- Legenda fora do card -->
+      <div class="legend" aria-label="Legenda">
+        <div class="legend-item"><span class="legend-swatch" id="leg-2m"></span><span>2,0 m</span></div>
+        <div class="legend-item"><span class="legend-swatch" id="leg-1m"></span><span>1,0 m</span></div>
+        <div class="legend-item"><span class="legend-swatch" id="leg-05m"></span><span>0,5 m</span></div>
+        <div class="legend-item"><span class="legend-swatch" id="leg-outros"></span><span>Outros</span></div>
+      </div>
+
+      <!-- Botão de download FORA do card -->
+      <div class="actions">
+        <button id="downloadBtn" class="primary grow">Baixar cartão como PNG</button>
+      </div>
+
+      <details>
+        <summary>Informações de depuração</summary>
+        <div id="debugInfo" style="font-family:monospace; font-size:12px; white-space:pre-wrap;"></div>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    // ===== Estado/Utils =====
+    const state = { trussWidth:0.25, height:0, length:0, cellPxPerMeter:100, borderMarginPx:1 };
+    const el = id => document.getElementById(id);
+    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+    const near = (a,b,eps=1e-6)=>Math.abs(a-b)<eps;
+    const fmt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2});
+
+    function syncStepsFromWidth(){ const s=parseFloat(el('width').value); ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>el(id).step=s); }
+    function syncHeight(v){ const val=parseFloat(v); state.height=clamp(isNaN(val)?0:val,0,1000); el('heightRange').value=state.height; el('heightNum').value=state.height; }
+    function syncLength(v){ const val=parseFloat(v); state.length=clamp(isNaN(val)?0:val,0,1000); el('lengthRange').value=state.length; el('lengthNum').value=state.length; }
+
+    // Materiais
+    function calcMateriais(dim, sizes){ const q={}; sizes.sort((a,b)=>b-a); sizes.forEach(s=>q[s]=0); let r=Math.max(0,+dim.toFixed(6));
+      for(const s of sizes){ while(r+1e-9>=s){ q[s]++; r=+(r-s).toFixed(6); } } return q; }
+    function distPecas(q, w){ const arr=[], ks=Object.keys(q).map(parseFloat).sort((a,b)=>b-a);
+      for(const t of ks){ const c=q[t]||0, cells=Math.round(t/w), code=near(t,2)?'8':near(t,1)?'4':near(t,0.5)?'2':'1'; for(let i=0;i<c;i++) arr.push({code, cells}); }
+      return arr;
+    }
+
+    // ===== Single-SVG grid =====
+    const SVGNS = 'http://www.w3.org/2000/svg';
+
+    function makePatternDefs(){
+      const defs = document.createElementNS(SVGNS,'defs');
+      defs.innerHTML = `
+        <pattern id="patRed" patternUnits="userSpaceOnUse" width="12" height="12">
+          <path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/>
+        </pattern>
+        <pattern id="patOrange" patternUnits="userSpaceOnUse" width="10" height="10">
+          <path d="M0,0 L0,10 M0,0 L10,0" stroke="rgba(0,0,0,0.18)" stroke-width="2"/>
+        </pattern>
+        <pattern id="patGreen" patternUnits="userSpaceOnUse" width="16" height="16">
+          <circle cx="5" cy="5" r="2.5" fill="rgba(0,0,0,0.25)"/>
+        </pattern>
+        <pattern id="patBlue" patternUnits="userSpaceOnUse" width="16" height="16">
+          <path d="M-4,16 L16,-4 M0,20 L20,0" stroke="rgba(255,255,255,0.28)" stroke-width="3"/>
+        </pattern>`;
+      return defs;
+    }
+    function baseColor(code){ return code==='8'?'#FF0000':code==='4'?'#ff6600':code==='2'?'#008000':code==='1'?'#0000FF':'#FFFFFF'; }
+    function patId(code){ return code==='8'?'#patRed':code==='4'?'#patOrange':code==='2'?'#patGreen':code==='1'?'#patBlue':null; }
+
+    function addPiece(svg, x,y,w,h, code){
+      const g = document.createElementNS(SVGNS,'g');
+      const r1 = document.createElementNS(SVGNS,'rect'); r1.setAttribute('x',x); r1.setAttribute('y',y); r1.setAttribute('width',w); r1.setAttribute('height',h); r1.setAttribute('fill', baseColor(code));
+      g.appendChild(r1);
+      const pid = patId(code);
+      if(pid){
+        const r2 = document.createElementNS(SVGNS,'rect'); r2.setAttribute('x',x); r2.setAttribute('y',y); r2.setAttribute('width',w); r2.setAttribute('height',h); r2.setAttribute('fill', `url(${pid})`);
+        g.appendChild(r2);
       }
+      const r3 = document.createElementNS(SVGNS,'rect'); r3.setAttribute('x',x+0.5); r3.setAttribute('y',y+0.5); r3.setAttribute('width',w-1); r3.setAttribute('height',h-1); r3.setAttribute('fill','none'); r3.setAttribute('stroke','#aaa'); r3.setAttribute('stroke-width','1');
+      g.appendChild(r3);
+      svg.appendChild(g);
     }
 
-    /* ====== Painéis ====== */
-    .panel{
-      background: var(--card);
-      color: var(--brand);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
+    // === Fit-by-width, cap height to viewport ===
+    function fitToWidthCapByViewport(nW,nH){
+      const wrap = el('gridWrap');
+      const availW = wrap.clientWidth;                     // width of canvas area on screen
+      let scale = availW / nW;                             // scale to fill width
+      const maxH = window.innerHeight;                     // viewport height cap
+      if (nH * scale > maxH) scale = maxH / nH;            // if too tall, scale down
+      const grid = el('grid');
+      grid.style.transform = `scale(${scale})`;
+      const scaledH = nH * scale + 12;
+      // keep canvas height reasonable but never exceed viewport
+      const min = 220;
+      wrap.style.minHeight = Math.min(Math.max(scaledH, min), maxH) + 'px';
     }
-    .panel h1{
-      margin: 0 0 10px;
-      font-size: 22px;
-      color: var(--accent);
-      text-align:center;
+
+    function segmentCells(innerCellsX, w){
+      const maxPer = Math.max(1, Math.floor((4-1e-9)/w));
+      const segs = Math.max(1, Math.ceil(innerCellsX/maxPer));
+      const base = Math.floor(innerCellsX/segs), rem=innerCellsX%segs;
+      const segCells = Array.from({length:segs}, (_,i)=> base+(i<rem?1:0));
+      const bounds=[0]; for(let i=0;i<segs;i++) bounds.push(bounds[i]+segCells[i]);
+      return {segs, segCells, bounds};
+    }
+
+    function gerarGrade(){
+      const w = parseFloat(el('width').value), Hm=state.height, Wm=state.length;
+      const res = el('results'); res.innerHTML='';
+
+      const innerL = Math.max(0, Wm - 2*w);
+      const innerV = Math.max(0, Hm - 2*w);
+      const innerCellsX = Math.max(0, Math.round(innerL / w + 1e-6));
+      const innerCellsY = Math.max(0, Math.round(innerV / w + 1e-6));
+      const cellsX = innerCellsX + 2, cellsY = innerCellsY + 2;
+
+      const {segs, segCells, bounds} = segmentCells(innerCellsX, w);
+      const supports = Math.max(0, segs-1);
+      const supportCells = bounds.slice(1,-1);
+
+      const sizes = [2,1,0.5,w];
+      const qVert = calcMateriais(innerV, sizes);
+      const sidePieces = distPecas(qVert, w);
+
+      const cellPx = state.cellPxPerMeter * w; const m = state.borderMarginPx;
+      const nW = cellsX*cellPx + 2*m, nH = cellsY*cellPx + 2*m;
+
+      const grid = el('grid'); grid.innerHTML='';
+      const svg = document.createElementNS(SVGNS,'svg');
+      svg.setAttribute('width', nW); svg.setAttribute('height', nH);
+      svg.setAttribute('viewBox', `0 0 ${nW} ${nH}`);
+      svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+      svg.appendChild(makePatternDefs());
+      grid.appendChild(svg);
+
+      // cantos
+      addPiece(svg, m, m, cellPx, cellPx, '1');
+      addPiece(svg, m+(cellsX-1)*cellPx, m, cellPx, cellPx, '1');
+      addPiece(svg, m, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
+      addPiece(svg, m+(cellsX-1)*cellPx, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
+
+      // topo/base por segmento
+      for(let s=0;s<segs;s++){
+        const start=bounds[s], len=segCells[s]; if(len<=0) continue;
+        const meters=len*w; const q=calcMateriais(meters, sizes); const pieces=distPecas(q, w);
+
+        let x = m + cellPx + start*cellPx;
+        pieces.forEach(p=>{ const wpx=p.cells*cellPx; addPiece(svg, x, m, wpx, cellPx, p.code); x += wpx; });
+
+        x = m + cellPx + start*cellPx;
+        const yb = m + (cellsY-1)*cellPx;
+        pieces.forEach(p=>{ const wpx=p.cells*cellPx; addPiece(svg, x, yb, wpx, cellPx, p.code); x += wpx; });
+      }
+
+      // colunas laterais
+      function drawCol(x){ let y=m+cellPx; sidePieces.forEach(p=>{ const hp=p.cells*cellPx; addPiece(svg, x,y,cellPx,hp,p.code); y+=hp; }); }
+      drawCol(m);
+      drawCol(m+(cellsX-1)*cellPx);
+
+      // miolo branco
+      addPiece(svg, m+cellPx, m+cellPx, (cellsX-2)*cellPx, (cellsY-2)*cellPx, '0');
+
+      // suportes internos + nós
+      supportCells.forEach(pos=>{
+        const x = m + cellPx + pos*cellPx;
+        drawCol(x);
+        addPiece(svg, x, m, cellPx, cellPx, '1');
+        addPiece(svg, x, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
+      });
+
+      // Preenche largura, mas nunca deixa a altura passar da do display
+      fitToWidthCapByViewport(nW,nH);
+
+      // Materiais (curto)
+      const totals = {}; sizes.forEach(s=>totals[s]=0);
+      sizes.forEach(s=>{ totals[s] += (2+supports)*(qVert[s]||0); });
+      const sumSeg={}; sizes.forEach(s=>sumSeg[s]=0);
+      for(let i=0;i<segs;i++){ const meters=segCells[i]*w; const qi=calcMateriais(meters, sizes); sizes.forEach(s=>sumSeg[s]+=qi[s]||0); }
+      sizes.forEach(s=>{ totals[s] += 2*(sumSeg[s]||0); });
+      totals[w] = (totals[w]||0)+4; totals[0.5]=(totals[0.5]||0)+2;
+
+      const sw = (code,side=18)=>(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">
+           <defs>
+             <pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern>
+             <pattern id="p2" patternUnits="userSpaceOnUse" width="10" height="10"><path d="M0,0 L0,10 M0,0 L10,0" stroke="rgba(0,0,0,0.18)" stroke-width="2"/></pattern>
+             <pattern id="p3" patternUnits="userSpaceOnUse" width="16" height="16"><circle cx="5" cy="5" r="2.5" fill="rgba(0,0,0,0.25)"/></pattern>
+             <pattern id="p4" patternUnits="userSpaceOnUse" width="16" height="16"><path d="M-4,16 L16,-4 M0,20 L20,0" stroke="rgba(255,255,255,0.28)" stroke-width="3"/></pattern>
+           </defs>
+           <rect width="${side}" height="${side}" fill="${baseColor(code)}"/>
+           <rect width="${side}" height="${side}" fill="url(#${code==='8'?'p1':code==='4'?'p2':code==='2'?'p3':'p4'})"/>
+           <rect x="0.5" y="0.5" width="${side-1}" height="${side-1}" fill="none" stroke="#777" stroke-width="1"/>
+         </svg>`
+      );
+
+      const ordered = Object.keys(totals).map(parseFloat).sort((a,b)=>a-b);
+      let list = '<div><strong>Materiais</strong></div><div class="checklist">';
+      ordered.forEach(t=>{
+        const qnt = totals[t], code = near(t,2)?'8':near(t,1)?'4':near(t,0.5)?'2':'1';
+        list += `<div class="checklist-item"><span class="sw">${sw(code,18)}</span><label onclick="this.classList.toggle('strikethrough')">${qnt} unidades de ${fmt(t)} metros</label></div>`;
+      });
+      list += '</div>';
+
+      el('results').innerHTML = `<div><strong>Tamanho externo:</strong> ${fmt(Wm)} m × ${fmt(Hm)} m</div>` + list;
+
+      // legenda fora do card
+      el('leg-2m').innerHTML = sw('8',18);
+      el('leg-1m').innerHTML = sw('4',18);
+      el('leg-05m').innerHTML= sw('2',18);
+      el('leg-outros').innerHTML = sw('1',18);
+
+      // debug
+      el('debugInfo').textContent =
+        `innerL(m): ${innerL.toFixed(3)} | innerV(m): ${innerV.toFixed(3)}\n`+
+        `cellsX x cellsY: ${cellsX} x ${cellsY}\n`+
+        `segments: ${segs} | supports: ${supports}\n`+
+        `bounds(cells): [${bounds.join(', ')}]`;
+    }
+
+    // Download: match on-screen width and cap height to viewport inside the clone
+    function baixarCartao(){
+      const card = el('exportCard');
+      const titulo = (el('eventInput').value || 'trelica-card').trim().replace(/[^\w\-]+/g,'_');
+
+      const liveCardW = card.getBoundingClientRect().width;
+      const liveWrapW = el('gridWrap').getBoundingClientRect().width;
+      const displayH = window.innerHeight;
+
+      html2canvas(card, {
+        backgroundColor:'#FFFFFF',
+        scale: window.devicePixelRatio || 2,
+        useCORS:true,
+        onclone: (doc)=>{
+          const cloneCard = doc.getElementById('exportCard');
+          const wrap = cloneCard.querySelector('#gridWrap');
+          const grid = cloneCard.querySelector('#grid');
+          const svg  = grid.querySelector('svg');
+          if(!svg) return;
+
+          // lock widths like the live view
+          doc.documentElement.style.width = liveCardW + 'px';
+          doc.body.style.width = liveCardW + 'px';
+          cloneCard.style.width = liveCardW + 'px';
+          wrap.style.width = liveWrapW + 'px';
+
+          // remove screen transform and scale SVG to width, but cap by display height
+          grid.style.transform = 'scale(1)';
+          const natW = parseFloat(svg.getAttribute('width'));
+          const natH = parseFloat(svg.getAttribute('height'));
+          let s = liveWrapW / natW;
+          if (natH * s > displayH) s = displayH / natH;  // cap by viewport height
+          svg.setAttribute('width', natW * s);
+          svg.setAttribute('height', natH * s);
+          wrap.style.minHeight = (natH * s + 12) + 'px';
+          wrap.style.overflow = 'visible';
+        }
+      }).then(canvas=>{
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `${titulo}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      });
+    }
+
+    // Eventos
+    el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
+    el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
+    el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
+    el('lengthRange').addEventListener('input', e=> syncLength(e.target.value));
+    el('lengthNum').addEventListener('input',   e=> syncLength(e.target.value));
+
+    el('calcBtn').addEventListener('click', ()=>{ gerarGrade(); requestAnimationFrame(gerarGrade); });
+    el('resetBtn').addEventListener('click', ()=>{
+      syncHeight(0); syncLength(0);
+      el('grid').innerHTML=''; el('results').innerHTML=''; el('debugInfo').textContent=''; el('eventInput').value='';
+      el('gridWrap').style.minHeight = '220px';
+    });
+    el('downloadBtn').addEventListener('click', baixarCartao);
+
+    // Init
+    (function(){ syncStepsFromWidth(); syncHeight(0); syncLength(0); })();
+    window.addEventListener('resize', ()=>{ if(el('grid').children.length) gerarGrade(); });
+  </script>
+</body>
+</html>      text-align:center;
     }
     .panel h2{
       margin: 12px 0 8px;
