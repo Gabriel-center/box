@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Box Truss Structure Calculator</title>
-  <!-- html2canvas for download -->
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Calculadora de Treliça Box</title>
+  <!-- html2canvas para download -->
   <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
   <style>
-    /* ====== COLORS: keep palette ====== */
+    /* ====== PALETA (mantida) ====== */
     :root{
-      --bg:#003366;         /* body background */
-      --ink:#FFFFFF;        /* body text on dark */
-      --card:#FFFFFF;       /* container/card bg */
-      --brand:#0055cc;      /* primary ink on white */
-      --accent:#0077cc;     /* buttons, headers */
-      --muted:#f0f0f0;      /* light gray */
-      --line:#0077cc;       /* borders */
+      --bg:#003366;         /* fundo da página */
+      --ink:#FFFFFF;        /* texto sobre fundo escuro */
+      --card:#FFFFFF;       /* cartões/brancos */
+      --brand:#0055cc;      /* textos principais */
+      --accent:#0077cc;     /* botões/títulos */
+      --muted:#f0f0f0;      /* cinza claro */
+      --line:#0077cc;       /* bordas */
       --shadow: 0 6px 18px rgba(0,0,0,.12);
       --radius: 12px;
     }
@@ -30,10 +30,10 @@
       justify-content:center;
       align-items:flex-start;
       margin:0;
-      padding:20px;
+      padding:16px;
     }
 
-    /* ====== Page wrapper with responsive columns ====== */
+    /* ====== Layout responsivo ====== */
     .page{
       width:100%;
       max-width:1200px;
@@ -43,22 +43,22 @@
     }
     @media (min-width: 980px){
       .page{
-        grid-template-columns: 380px 1fr;
+        grid-template-columns: 380px 1fr; /* controles à esquerda, prévia à direita */
         gap:18px;
       }
     }
 
-    /* ====== Panels ====== */
+    /* ====== Painéis ====== */
     .panel{
       background: var(--card);
       color: var(--brand);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
-      padding: 18px;
+      padding: 16px;
     }
     .panel h1{
-      margin: 0 0 12px;
-      font-size: 24px;
+      margin: 0 0 10px;
+      font-size: 22px;
       color: var(--accent);
       text-align:center;
     }
@@ -68,8 +68,8 @@
       color: var(--accent);
     }
 
-    /* ====== Controls ====== */
-    .row{ display:grid; grid-template-columns: 1fr; gap:8px; margin:12px 0 }
+    /* ====== Controles ====== */
+    .row{ display:grid; grid-template-columns: 1fr; gap:8px; margin:10px 0 }
     label{ font-size: 14px }
     select,input,button{
       width:100%;
@@ -81,22 +81,20 @@
       font-size:14px;
     }
     input[type="range"]{ accent-color: var(--accent) }
+
     .inline{
       display:grid;
       grid-template-columns: 1fr 110px;
       gap:10px;
       align-items:center;
     }
-    @media (max-width:480px){
-      .inline{ grid-template-columns: 1fr 96px }
-    }
-
     .actions{
       display:flex;
       gap:10px;
       margin-top:10px;
+      flex-wrap: wrap;
     }
-    .actions .grow{ flex:1 }
+    .actions .grow{ flex:1; min-width: 180px }
     button.primary{
       background: var(--accent);
       color:#fff;
@@ -105,12 +103,20 @@
     }
     button.primary:disabled{ opacity:.6; cursor:not-allowed }
 
-    /* ====== Right column content ====== */
+    /* ====== Mobile tune ====== */
+    @media (max-width: 640px){
+      .panel{ padding: 12px }
+      .inline{ grid-template-columns: 1fr; }           /* empilha slider e número */
+      select,input,button{ padding:10px; font-size:16px } /* alvo de toque melhor */
+      .actions{ gap:8px }
+    }
+
+    /* ====== Card de exportação ====== */
     .export-card{
       background: #fff;
       border:1px solid var(--muted);
       border-radius: var(--radius);
-      padding: 14px;
+      padding: 12px;
       color:#000;
     }
     .export-header{
@@ -118,16 +124,18 @@
       gap:10px;
       align-items:center;
       margin-bottom:10px;
+      flex-wrap: wrap;
     }
     .export-title{ font-weight:bold; color:#000 }
     .export-header input{
-      flex:1;
+      flex:1 1 280px;
       border:1px solid var(--line);
       padding:10px;
       border-radius:8px;
+      min-width: 200px;
     }
 
-    /* ====== Grid preview ====== */
+    /* ====== Prévia da treliça ====== */
     .preview-wrap{
       display: grid;
       grid-template-columns: 1fr;
@@ -137,7 +145,7 @@
       overflow:hidden;
       border:1px solid #ddd;
       border-radius:10px;
-      padding:10px;
+      padding:8px;
       background:#fff;
       min-height: 220px;
     }
@@ -152,7 +160,7 @@
       transform-origin: top left;
     }
 
-    /* ====== Truss pieces + colorblind-friendly patterns ====== */
+    /* ====== Peças + padrões acessíveis ====== */
     .truss-piece{
       position:absolute;
       box-sizing:border-box;
@@ -161,21 +169,20 @@
       image-rendering: pixelated;
     }
 
-    /* Base colors (kept) + pattern overlays */
-    /* 2.0 m -> red with diagonal stripes */
+    /* 2.0 m -> vermelho com listras diagonais */
     .color-8{
       background:
         repeating-linear-gradient(45deg, rgba(0,0,0,.18) 0 6px, rgba(0,0,0,0) 6px 12px),
         #FF0000;
     }
-    /* 1.0 m -> orange with crosshatch */
+    /* 1.0 m -> laranja com hatch cruzado */
     .color-4{
       background:
         repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0 5px, rgba(0,0,0,0) 5px 10px),
         repeating-linear-gradient(0deg,  rgba(0,0,0,.12) 0 5px, rgba(0,0,0,0) 5px 10px),
         #ff6600;
     }
-    /* 0.5 m -> green with dots */
+    /* 0.5 m -> verde com pontilhado */
     .color-2{
       background:
         radial-gradient(circle at 6px 6px, rgba(0,0,0,.22) 2px, transparent 2px),
@@ -183,7 +190,7 @@
         #008000;
       background-size: 24px 24px, 24px 24px, auto;
     }
-    /* Other -> blue with wide diagonal */
+    /* Outros -> azul com diagonal larga */
     .color-1{
       background:
         repeating-linear-gradient(135deg, rgba(255,255,255,.25) 0 8px, rgba(255,255,255,0) 8px 16px),
@@ -192,7 +199,7 @@
     }
     .color-0{ background:#FFFFFF }
 
-    /* ====== Results / checklist ====== */
+    /* ====== Resultados ====== */
     #results{
       background: var(--muted);
       border-radius:10px;
@@ -225,7 +232,7 @@
       color:#666;
     }
 
-    /* ====== Legend ====== */
+    /* ====== Legenda ====== */
     .legend{
       display:grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -246,7 +253,7 @@
       border-radius:3px;
     }
 
-    /* ====== Collapsible debug ====== */
+    /* ====== Debug ====== */
     details{
       margin-top:12px;
       background: var(--muted);
@@ -263,102 +270,94 @@
 </head>
 <body>
   <div class="page">
-    <!-- LEFT: Controls -->
+    <!-- ESQUERDA: Controles -->
     <section class="panel" aria-labelledby="calc-title">
-      <h1 id="calc-title">Box Truss Calculator</h1>
+      <h1 id="calc-title">Calculadora de Treliça Box</h1>
 
       <div class="row">
-        <label for="width">Select Truss Width (meters)</label>
+        <label for="width">Largura do perfil (metros)</label>
         <select id="width" aria-describedby="width-help">
           <option value="0.25" selected>0.25</option>
         </select>
-        <small id="width-help" style="color:#2b2b2b">Slider steps and numeric inputs follow this width.</small>
+        <small id="width-help" style="color:#2b2b2b">O passo dos controles segue esta largura.</small>
       </div>
 
       <div class="row">
-        <label for="structureType">Structure Type</label>
-        <select id="structureType">
-          <option value="rectangular">Rectangular</option>
-          <option value="ledPanel">LED Panel</option>
-        </select>
-      </div>
-
-      <div class="row">
-        <label>Height (meters)</label>
+        <label>Altura (metros)</label>
         <div class="inline">
-          <input aria-label="Height slider" type="range" id="heightRange" min="0" max="30" step="0.25" value="0">
-          <input aria-label="Height value" type="number" id="heightNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+          <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
         </div>
       </div>
 
       <div class="row">
-        <label>Length (meters)</label>
+        <label>Comprimento (metros)</label>
         <div class="inline">
-          <input aria-label="Length slider" type="range" id="lengthRange" min="0" max="30" step="0.25" value="0">
-          <input aria-label="Length value" type="number" id="lengthNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+          <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="30" step="0.25" value="0">
+          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
         </div>
       </div>
 
       <div class="actions">
-        <button id="calcBtn" class="primary grow">Calculate Grid and Materials</button>
-        <button id="resetBtn" title="Clear">Clear</button>
+        <button id="calcBtn" class="primary grow">Calcular grade e materiais</button>
+        <button id="resetBtn" class="grow" title="Limpar">Limpar</button>
       </div>
     </section>
 
-    <!-- RIGHT: Preview + Results -->
+    <!-- DIREITA: Prévia + Resultados -->
     <section class="panel">
       <div class="export-card" id="exportCard">
         <div class="export-header">
-          <span class="export-title">Event/OS:</span>
-          <input id="eventInput" type="text" placeholder="Optional title for export">
+          <span class="export-title">Evento/OS:</span>
+          <input id="eventInput" type="text" placeholder="Opcional — título do cartão">
         </div>
 
         <div class="preview-wrap">
-          <div id="gridWrap" aria-live="polite" aria-label="Truss preview">
+          <div id="gridWrap" aria-live="polite" aria-label="Prévia da treliça">
             <div id="grid"></div>
           </div>
 
-          <div class="legend" aria-label="Legend">
+          <div class="legend" aria-label="Legenda">
             <div class="legend-item">
-              <span class="legend-swatch color-8"></span><span>2.0 m</span>
+              <span class="legend-swatch color-8"></span><span>2,0 m</span>
             </div>
             <div class="legend-item">
-              <span class="legend-swatch color-4"></span><span>1.0 m</span>
+              <span class="legend-swatch color-4"></span><span>1,0 m</span>
             </div>
             <div class="legend-item">
-              <span class="legend-swatch color-2"></span><span>0.5 m</span>
+              <span class="legend-swatch color-2"></span><span>0,5 m</span>
             </div>
             <div class="legend-item">
-              <span class="legend-swatch color-1"></span><span>Other</span>
+              <span class="legend-swatch color-1"></span><span>Outros</span>
             </div>
           </div>
 
-          <div id="results" aria-label="Materials list"></div>
+          <div id="results" aria-label="Lista de materiais"></div>
 
           <div class="actions">
-            <button id="downloadBtn" class="primary grow">Download Card as PNG</button>
+            <button id="downloadBtn" class="primary grow">Baixar cartão como PNG</button>
           </div>
         </div>
       </div>
 
       <details>
-        <summary>Debug Info</summary>
+        <summary>Informações de depuração</summary>
         <div id="debugInfo" style="font-family: monospace; font-size:12px; white-space: pre-wrap;"></div>
       </details>
     </section>
   </div>
 
   <script>
-    // ---------- State ----------
+    // ---------- Estado ----------
     const state = {
       trussWidth: 0.25,
       height: 0,
       length: 0,
-      cellPxPerMeter: 100,   // px per meter for 1.0m; multiplied by trussWidth later
+      cellPxPerMeter: 100,   // px por metro para 1,0 m; multiplicado pela largura do perfil
       borderMarginPx: 1
     };
 
-    // ---------- Utilities ----------
+    // ---------- Utilidades ----------
     const el = id => document.getElementById(id);
     const clamp = (v,min,max) => Math.max(min, Math.min(max, v));
     const near = (a,b,eps=1e-6) => Math.abs(a-b) < eps;
@@ -383,267 +382,260 @@
       el('lengthNum').value = state.length;
     }
 
-    // Greedy cutter for materials (descending sizes)
-    function calculateMaterialNeeded(dim, materialSizes){
+    // Corte guloso de materiais (tamanhos descendentes)
+    function calcularMateriaisParaDimensao(dim, tamanhos){
       const q = {};
-      materialSizes.sort((a,b)=>b-a);
-      materialSizes.forEach(s=>q[s]=0);
-      let remaining = Math.max(0, +dim.toFixed(6));
-      for(const s of materialSizes){
-        while(remaining + 1e-9 >= s){
+      tamanhos.sort((a,b)=>b-a);
+      tamanhos.forEach(s=>q[s]=0);
+      let restante = Math.max(0, +dim.toFixed(6));
+      for(const s of tamanhos){
+        while(restante + 1e-9 >= s){
           q[s]++;
-          remaining = +(remaining - s).toFixed(6);
+          restante = +(restante - s).toFixed(6);
         }
       }
       return q;
     }
 
-    // Build piece array with codes and cell counts
-    function getDistributionArray(quantities, trussWidth){
-      const pieces = [];
-      const sizes = Object.keys(quantities).map(parseFloat).sort((a,b)=>b-a);
-      for(const size of sizes){
-        const count = quantities[size] || 0;
-        const cells = Math.round(size / trussWidth);
+    // Converte quantidades em peças com "células" e "código" de cor/padrão
+    function distribuirPecas(qtds, larguraPerfil){
+      const pecas = [];
+      const tamanhos = Object.keys(qtds).map(parseFloat).sort((a,b)=>b-a);
+      for(const t of tamanhos){
+        const count = qtds[t] || 0;
+        const celulas = Math.round(t / larguraPerfil);
         const code =
-          near(size,2)   ? '8' :
-          near(size,1)   ? '4' :
-          near(size,0.5) ? '2' : '1';
-        for(let i=0;i<count;i++) pieces.push({code, cells});
+          near(t,2)   ? '8' :
+          near(t,1)   ? '4' :
+          near(t,0.5) ? '2' : '1';
+        for(let i=0;i<count;i++) pecas.push({code, cells: celulas});
       }
-      return pieces;
+      return pecas;
     }
 
-    function createPiece(x,y,w,h,code,z=1){
-      const piece = document.createElement('div');
-      piece.className = 'truss-piece color-' + code;
-      piece.style.left = x + 'px';
-      piece.style.top = y + 'px';
-      piece.style.width = w + 'px';
-      piece.style.height = h + 'px';
-      piece.style.zIndex = z;
-      return piece;
+    function criarPeca(x,y,w,h,code,z=1){
+      const d = document.createElement('div');
+      d.className = 'truss-piece color-' + code;
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.width = w + 'px';
+      d.style.height = h + 'px';
+      d.style.zIndex = z;
+      return d;
     }
 
-    // Fit grid into container by scaling if needed
-    function fitGridToWrap(naturalW, naturalH){
+    // Ajusta escala da prévia para caber no contêiner
+    function ajustarEscala(larguraNatural, alturaNatural){
       const wrap = el('gridWrap');
-      const padding = 20; // breathing room
-      const availW = wrap.clientWidth - padding;
-      const availH = wrap.clientHeight - padding || 440;
-      const sx = availW / naturalW;
-      const sy = availH / naturalH;
-      const scale = Math.min(1, sx, sy);
+      const padding = 20;
+      const dispW = wrap.clientWidth - padding;
+      const dispH = wrap.clientHeight - padding || 440;
+      const sx = dispW / larguraNatural;
+      const sy = dispH / alturaNatural;
+      const escala = Math.min(1, sx, sy);
       const grid = el('grid');
-      grid.style.width = naturalW + 'px';
-      grid.style.height = naturalH + 'px';
-      grid.style.transform = 'scale(' + scale + ')';
-      const usedH = Math.min(naturalH * scale + 12, Math.max(availH, 220));
-      wrap.style.minHeight = usedH + 'px';
+      grid.style.width = larguraNatural + 'px';
+      grid.style.height = alturaNatural + 'px';
+      grid.style.transform = 'scale(' + escala + ')';
+      const usadoH = Math.min(alturaNatural * escala + 12, Math.max(dispH, 220));
+      wrap.style.minHeight = usadoH + 'px';
     }
 
-    // Integer segmentation of inner cells so every section < 4 m
-    function segmentInnerCells(innerCellsX, widthVal){
-      const maxSegCells = Math.max(1, Math.floor((4 - 1e-9) / widthVal));
-      const segments = Math.max(1, Math.ceil(innerCellsX / maxSegCells));
-
-      // Even distribution of integer cells
-      const base = Math.floor(innerCellsX / segments);
-      const rem  = innerCellsX % segments;
-      const segCells = Array.from({length: segments}, (_,i)=> base + (i < rem ? 1 : 0));
-
-      const boundaries = [0];
-      for(let i=0;i<segments;i++) boundaries.push(boundaries[i] + segCells[i]);
-
-      return {segments, segCells, boundaries};
+    // Segmentação inteira em células para garantir vãos < 4 m e alinhamento exato
+    function segmentarCelulas(innerCellsX, larguraPerfil){
+      const maxCelulasPorTrecho = Math.max(1, Math.floor((4 - 1e-9) / larguraPerfil));
+      const segmentos = Math.max(1, Math.ceil(innerCellsX / maxCelulasPorTrecho));
+      const base = Math.floor(innerCellsX / segmentos);
+      const resto = innerCellsX % segmentos;
+      const celSeg = Array.from({length: segmentos}, (_,i)=> base + (i < resto ? 1 : 0));
+      const limites = [0];
+      for(let i=0;i<segmentos;i++) limites.push(limites[i] + celSeg[i]);
+      return {segmentos, celSeg, limites};
     }
 
-    // ---------- Main builder with supports < 4 m ----------
-    function generateGrid(){
-      const widthVal  = parseFloat(el('width').value);
-      const heightVal = state.height;
-      const lengthVal = state.length;
+    // ---------- Construtor principal ----------
+    function gerarGrade(){
+      const larguraPerfil  = parseFloat(el('width').value);
+      const altura = state.height;
+      const comprimento = state.length;
 
-      const resultsEl = el('results');
-      resultsEl.innerHTML = '';
+      const resEl = el('results');
+      resEl.innerHTML = '';
 
-      if(lengthVal < widthVal*2 || heightVal < widthVal*2){
-        resultsEl.innerHTML =
-          '<div><strong>Tip:</strong> length and height must be at least 2× the truss width to form a rectangle.</div>';
+      if(comprimento < larguraPerfil*2 || altura < larguraPerfil*2){
+        resEl.innerHTML = '<div><strong>Dica:</strong> comprimento e altura devem ser pelo menos 2× a largura do perfil.</div>';
       }
 
-      // Internal spans (clear distance between corner columns)
-      const innerL = Math.max(0, lengthVal - widthVal*2);
-      const innerH = Math.max(0, heightVal - widthVal*2);
+      // Vãos internos (entre colunas de canto)
+      const vaoInternoX = Math.max(0, comprimento - larguraPerfil*2);
+      const vaoInternoY = Math.max(0, altura - larguraPerfil*2);
 
-      // Work in integer cells
-      const innerCellsX = Math.max(0, Math.round(innerL / widthVal + 1e-6));
-      const innerCellsY = Math.max(0, Math.round(innerH / widthVal + 1e-6));
+      // Trabalhando em células inteiras
+      const innerCellsX = Math.max(0, Math.round(vaoInternoX / larguraPerfil + 1e-6));
+      const innerCellsY = Math.max(0, Math.round(vaoInternoY / larguraPerfil + 1e-6));
       const cellsX = innerCellsX + 2;
       const cellsY = innerCellsY + 2;
 
-      const {segments, segCells, boundaries} = segmentInnerCells(innerCellsX, widthVal);
-      const supportsCount = Math.max(0, segments - 1);
-      const supportCells = boundaries.slice(1, -1); // drop 0 and innerCellsX
+      const {segmentos, celSeg, limites} = segmentarCelulas(innerCellsX, larguraPerfil);
+      const suportes = Math.max(0, segmentos - 1);
+      const posSuportes = limites.slice(1, -1); // remove 0 e innerCellsX
 
-      const materialSizes = [2, 1, 0.5, widthVal];
+      const tamanhos = [2, 1, 0.5, larguraPerfil];
 
-      // Vertical distribution (for sides/supports) in meters, then pieces
-      const qH = calculateMaterialNeeded(innerH, materialSizes);
-      const sidePieces = getDistributionArray(qH, widthVal);
+      // Peças verticais (laterais/suportes)
+      const qVert = calcularMateriaisParaDimensao(vaoInternoY, tamanhos);
+      const pecasLaterais = distribuirPecas(qVert, larguraPerfil);
 
-      const cellSize = state.cellPxPerMeter * widthVal; // px per truss width cell
+      const tamCelula = state.cellPxPerMeter * larguraPerfil; // px por célula
       const m = state.borderMarginPx;
 
-      const naturalW = cellsX * cellSize + 2*m;
-      const naturalH = cellsY * cellSize + 2*m;
+      const larguraNatural = cellsX * tamCelula + 2*m;
+      const alturaNatural  = cellsY * tamCelula + 2*m;
 
       const grid = el('grid');
       grid.innerHTML = '';
 
-      // Corners
-      grid.appendChild(createPiece(m, m, cellSize, cellSize, '1', 3));
-      grid.appendChild(createPiece(m + (cellsX-1)*cellSize, m, cellSize, cellSize, '1', 3));
-      grid.appendChild(createPiece(m, m + (cellsY-1)*cellSize, cellSize, cellSize, '1', 3));
-      grid.appendChild(createPiece(m + (cellsX-1)*cellSize, m + (cellsY-1)*cellSize, cellSize, cellSize, '1', 3));
+      // Cantos
+      grid.appendChild(criarPeca(m, m, tamCelula, tamCelula, '1', 3));
+      grid.appendChild(criarPeca(m + (cellsX-1)*tamCelula, m, tamCelula, tamCelula, '1', 3));
+      grid.appendChild(criarPeca(m, m + (cellsY-1)*tamCelula, tamCelula, tamCelula, '1', 3));
+      grid.appendChild(criarPeca(m + (cellsX-1)*tamCelula, m + (cellsY-1)*tamCelula, tamCelula, tamCelula, '1', 3));
 
-      // TOP & BOTTOM borders per segment (use exact integer cell windows)
-      for(let s=0; s<segments; s++){
-        const startCell = boundaries[s];
-        const segLenCells = segCells[s];
-        if(segLenCells<=0) continue;
+      // Bordas superior e inferior por segmento (alinhadas às células inteiras)
+      for(let s=0; s<segmentos; s++){
+        const inicioCel = limites[s];
+        const celulasTrecho = celSeg[s];
+        if(celulasTrecho<=0) continue;
 
-        const segLenMeters = segLenCells * widthVal;
-        const qSeg = calculateMaterialNeeded(segLenMeters, materialSizes);
-        const segPieces = getDistributionArray(qSeg, widthVal);
+        const metrosTrecho = celulasTrecho * larguraPerfil;
+        const qTrecho = calcularMateriaisParaDimensao(metrosTrecho, tamanhos);
+        const pecasTrecho = distribuirPecas(qTrecho, larguraPerfil);
 
-        // Top
-        let xTop = m + cellSize + startCell * cellSize;
-        segPieces.forEach(p=>{
-          const w = p.cells * cellSize;
-          grid.appendChild(createPiece(xTop, m, w, cellSize, p.code, 1));
+        // Topo
+        let xTop = m + tamCelula + inicioCel * tamCelula;
+        pecasTrecho.forEach(p=>{
+          const w = p.cells * tamCelula;
+          grid.appendChild(criarPeca(xTop, m, w, tamCelula, p.code, 1));
           xTop += w;
         });
 
-        // Bottom
-        let xBot = m + cellSize + startCell * cellSize;
-        const yBot = m + (cellsY-1)*cellSize;
-        segPieces.forEach(p=>{
-          const w = p.cells * cellSize;
-          grid.appendChild(createPiece(xBot, yBot, w, cellSize, p.code, 1));
-          xBot += w;
+        // Base
+        let xBase = m + tamCelula + inicioCel * tamCelula;
+        const yBase = m + (cellsY-1)*tamCelula;
+        pecasTrecho.forEach(p=>{
+          const w = p.cells * tamCelula;
+          grid.appendChild(criarPeca(xBase, yBase, w, tamCelula, p.code, 1));
+          xBase += w;
         });
       }
 
-      // LEFT and RIGHT borders
-      function drawVerticalColumn(x, z=2){
-        let y = m + cellSize;
-        sidePieces.forEach(p=>{
-          const h = p.cells * cellSize;
-          grid.appendChild(createPiece(x, y, cellSize, h, p.code, z));
+      // Colunas esquerda e direita
+      function desenharColunaVertical(x, z=2){
+        let y = m + tamCelula;
+        pecasLaterais.forEach(p=>{
+          const h = p.cells * tamCelula;
+          grid.appendChild(criarPeca(x, y, tamCelula, h, p.code, z));
           y += h;
         });
       }
-      drawVerticalColumn(m, 2);                                   // left
-      drawVerticalColumn(m + (cellsX-1)*cellSize, 2);             // right
+      desenharColunaVertical(m, 2);                                   // esquerda
+      desenharColunaVertical(m + (cellsX-1)*tamCelula, 2);            // direita
 
-      // Inner fill
-      const innerFill = createPiece(m + cellSize, m + cellSize, (cellsX-2)*cellSize, (cellsY-2)*cellSize, '0', 0);
-      grid.appendChild(innerFill);
+      // Miolo branco
+      grid.appendChild(criarPeca(m + tamCelula, m + tamCelula, (cellsX-2)*tamCelula, (cellsY-2)*tamCelula, '0', 0));
 
-      // INTERNAL SUPPORTS + overlay nodes exactly on boundaries
-      supportCells.forEach(pos=>{
-        const xSupport = m + cellSize + pos * cellSize;
-        drawVerticalColumn(xSupport, 2);
-        // overlay node squares (visual only; not counted in materials)
-        grid.appendChild(createPiece(xSupport, m, cellSize, cellSize, '1', 4));                               // top node
-        grid.appendChild(createPiece(xSupport, m + (cellsY-1)*cellSize, cellSize, cellSize, '1', 4));         // bottom node
+      // Suportes internos + nós sobrepostos (garante alinhamento visual)
+      posSuportes.forEach(pos=>{
+        const xSup = m + tamCelula + pos * tamCelula;
+        desenharColunaVertical(xSup, 2);
+        grid.appendChild(criarPeca(xSup, m, tamCelula, tamCelula, '1', 4));                               // nó topo
+        grid.appendChild(criarPeca(xSup, m + (cellsY-1)*tamCelula, tamCelula, tamCelula, '1', 4));        // nó base
       });
 
-      // Fit to preview
-      fitGridToWrap(naturalW, naturalH);
+      // Ajusta escala para caber
+      ajustarEscala(larguraNatural, alturaNatural);
 
-      // ===== Materials =====
-      const totalQuantities = {};
-      materialSizes.forEach(s=>totalQuantities[s]=0);
+      // ===== Materiais =====
+      const totais = {};
+      tamanhos.forEach(s=>totais[s]=0);
 
-      // Vertical totals: count all columns (2 sides + supports)
-      materialSizes.forEach(s=>{
-        totalQuantities[s] += (2 + supportsCount) * (qH[s] || 0);
+      // Verticais: 2 laterais + suportes internos
+      tamanhos.forEach(s=>{
+        totais[s] += (2 + suportes) * (qVert[s] || 0);
       });
 
-      // Horizontal totals: sum per segment, then times 2 (top+bottom)
-      const sumSeg = {};
-      materialSizes.forEach(s=>sumSeg[s]=0);
-      for(let s=0; s<segments; s++){
-        const segLenMeters = segCells[s] * widthVal;
-        const qSeg = calculateMaterialNeeded(segLenMeters, materialSizes);
-        materialSizes.forEach(sz=>{
-          sumSeg[sz] += qSeg[sz] || 0;
+      // Horizontais: soma por segmento, depois ×2 (topo e base)
+      const somaSeg = {};
+      tamanhos.forEach(s=>somaSeg[s]=0);
+      for(let s=0; s<segmentos; s++){
+        const metrosTrecho = celSeg[s] * larguraPerfil;
+        const qTrecho = calcularMateriaisParaDimensao(metrosTrecho, tamanhos);
+        tamanhos.forEach(sz=>{
+          somaSeg[sz] += qTrecho[sz] || 0;
         });
       }
-      materialSizes.forEach(s=>{
-        totalQuantities[s] += 2 * (sumSeg[s] || 0);
+      tamanhos.forEach(s=>{
+        totais[s] += 2 * (somaSeg[s] || 0);
       });
 
-      // Extras
-      totalQuantities[widthVal] = (totalQuantities[widthVal] || 0) + 4;  // corner/feet
-      totalQuantities[0.5] = (totalQuantities[0.5] || 0) + 2;
+      // Extras (pés/cantos etc.)
+      totais[larguraPerfil] = (totais[larguraPerfil] || 0) + 4;
+      totais[0.5] = (totais[0.5] || 0) + 2;
 
-      // Render checklist (keep color/pattern mapping)
-      const ordered = Object.keys(totalQuantities).map(parseFloat).sort((a,b)=>a-b);
+      // Render lista
+      const ordenado = Object.keys(totais).map(parseFloat).sort((a,b)=>a-b);
       let checklist = '';
-      checklist += '<div><strong>Materials</strong></div>';
+      checklist += '<div><strong>Materiais</strong></div>';
       checklist += '<div class="checklist">';
-      ordered.forEach(size=>{
-        const qty = totalQuantities[size];
-        const colorClass =
-          near(size,2)   ? 'color-8' :
-          near(size,1)   ? 'color-4' :
-          near(size,0.5) ? 'color-2' : 'color-1';
+      ordenado.forEach(t=>{
+        const q = totais[t];
+        const cls =
+          near(t,2)   ? 'color-8' :
+          near(t,1)   ? 'color-4' :
+          near(t,0.5) ? 'color-2' : 'color-1';
         checklist += `
           <div class="checklist-item">
-            <div class="color-box ${colorClass}" onclick="toggleStrikethrough(this)" aria-hidden="true"></div>
-            <label onclick="toggleStrikethrough(this)">${qty} units of ${size} meters</label>
+            <div class="color-box ${cls}" onclick="alternarRisco(this)" aria-hidden="true"></div>
+            <label onclick="alternarRisco(this)">${q} unidades de ${t} metros</label>
           </div>
         `;
       });
       checklist += '</div>';
 
       const dims = `<div style="margin-top:8px;">
-        <strong>Outer size:</strong> ${lengthVal.toFixed(2)} m × ${heightVal.toFixed(2)} m
-        &nbsp;|&nbsp; <strong>Truss width:</strong> ${widthVal} m
-        &nbsp;|&nbsp; <strong>Sections:</strong> ${segments} (max span < 4 m)
+        <strong>Tamanho externo:</strong> ${comprimento.toFixed(2)} m × ${altura.toFixed(2)} m
+        &nbsp;|&nbsp; <strong>Largura do perfil:</strong> ${larguraPerfil} m
+        &nbsp;|&nbsp; <strong>Seções:</strong> ${segmentos} (vão máximo < 4 m)
       </div>`;
-      resultsEl.innerHTML = dims + checklist;
+      resEl.innerHTML = dims + checklist;
 
       // Debug
       let dbg = '';
-      dbg += `innerL(m): ${innerL.toFixed(3)} | innerH(m): ${innerH.toFixed(3)}\n`;
+      dbg += `vaoInternoX(m): ${vaoInternoX.toFixed(3)} | vaoInternoY(m): ${vaoInternoY.toFixed(3)}\n`;
       dbg += `cellsX x cellsY: ${cellsX} x ${cellsY}\n`;
       dbg += `innerCellsX: ${innerCellsX} | innerCellsY: ${innerCellsY}\n`;
-      dbg += `segments: ${segments} | supports: ${supportsCount}\n`;
-      dbg += `boundaries (cells): [${boundaries.join(', ')}]\n`;
+      dbg += `segmentos: ${segmentos} | suportes: ${suportes}\n`;
+      dbg += `limites (células): [${limites.join(', ')}]\n`;
       el('debugInfo').textContent = dbg;
     }
 
-    // Checklist toggle
-    function toggleStrikethrough(elm){
+    // Alterna risco (checklist)
+    function alternarRisco(elm){
       const label = elm.tagName === 'LABEL' ? elm : elm.nextElementSibling;
       label.classList.toggle('strikethrough');
     }
-    window.toggleStrikethrough = toggleStrikethrough;
+    window.alternarRisco = alternarRisco;
 
-    // Download PNG (card)
-    function downloadCard(){
+    // Download PNG
+    function baixarCartao(){
       const card = el('exportCard');
-      const title = (el('eventInput').value || 'truss-card').trim().replace(/[^\w\-]+/g,'_');
+      const titulo = (el('eventInput').value || 'trelica-card').trim().replace(/[^\w\-]+/g,'_');
       const prev = card.style.backgroundColor;
       card.style.backgroundColor = '#FFFFFF';
       html2canvas(card, {backgroundColor:'#FFFFFF', scale:2, useCORS:true}).then(canvas=>{
         const link = document.createElement('a');
         link.href = canvas.toDataURL('image/png');
-        link.download = `${title}.png`;
+        link.download = `${titulo}.png`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -651,22 +643,28 @@
       });
     }
 
-    // ---------- Events ----------
+    // ---------- Eventos ----------
     el('width').addEventListener('change', ()=>{
       state.trussWidth = parseFloat(el('width').value);
       syncStepsFromWidth();
     });
 
-    // Height sync
+    // Sincroniza altura
     el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
     el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
 
-    // Length sync
+    // Sincroniza comprimento
     el('lengthRange').addEventListener('input', e=> syncLength(e.target.value));
     el('lengthNum').addEventListener('input',   e=> syncLength(e.target.value));
 
-    // Buttons
-    el('calcBtn').addEventListener('click', generateGrid);
+    // Botões
+    el('calcBtn').addEventListener('click', ()=>{
+      // Redesenha duas vezes como você pediu
+      gerarGrade();
+      // uma batida no próximo frame garante medidas/resize aplicados
+      requestAnimationFrame(gerarGrade);
+    });
+
     el('resetBtn').addEventListener('click', ()=>{
       syncHeight(0); syncLength(0);
       el('grid').innerHTML = '';
@@ -675,18 +673,19 @@
       el('eventInput').value = '';
       el('gridWrap').style.minHeight = window.matchMedia('(min-width:980px)').matches ? '440px' : '220px';
     });
-    el('downloadBtn').addEventListener('click', downloadCard);
 
-    // Initial setup
+    el('downloadBtn').addEventListener('click', baixarCartao);
+
+    // Setup inicial
     (function init(){
       syncStepsFromWidth();
       syncHeight(0);
       syncLength(0);
     })();
 
-    // Refit on resize
+    // Reajusta em resize
     window.addEventListener('resize', ()=>{
-      if(el('grid').children.length) generateGrid();
+      if(el('grid').children.length) gerarGrade();
     });
   </script>
 </body>
