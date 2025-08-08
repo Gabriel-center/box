@@ -63,12 +63,8 @@
       font-size:18px; font-weight:800; color:var(--accent);
       text-transform:uppercase; letter-spacing:.5px;
     }
-    .results-title .title-rule{
-      flex:1; height:1px; background:var(--line); opacity:.35;
-    }
-    .results-title .t-meta{
-      font-weight:700; color:#222; white-space:nowrap;
-    }
+    .results-title .title-rule{ flex:1; height:1px; background:var(--line); opacity:.35; }
+    .results-title .t-meta{ font-weight:700; color:#222; white-space:nowrap; }
 
     .checklist{
       display:grid;
@@ -112,7 +108,8 @@
         <label>Comprimento (metros)</label>
         <div class="inline">
           <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="5" step="0.25" value="0">
-          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" max="5" step="0.25" value="0" inputmode="decimal">
+          <!-- número sem max: soft cap -->
+          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" step="0.25" value="0" inputmode="decimal" placeholder="ex.: 8">
         </div>
       </div>
 
@@ -120,7 +117,8 @@
         <label>Altura (metros)</label>
         <div class="inline">
           <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="5" step="0.25" value="0">
-          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" max="5" step="0.25" value="0" inputmode="decimal">
+          <!-- número sem max: soft cap -->
+          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" step="0.25" value="0" inputmode="decimal" placeholder="ex.: 3.5">
         </div>
       </div>
 
@@ -174,15 +172,31 @@
       const s=parseFloat(el('width').value);
       ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>el(id).step=s);
     }
-    function syncHeight(v){
-      const val=parseFloat(v);
-      state.height=clamp(isNaN(val)?0:val,0,5);
-      el('heightRange').value=state.height; el('heightNum').value=state.height;
+
+    // Split handlers: slider caps at 5; number can exceed 5
+    function setHeightFromSlider(v){
+      const val = clamp(parseFloat(v)||0, 0, 5);
+      state.height = val;
+      el('heightRange').value = val;
+      el('heightNum').value = val;
     }
-    function syncLength(v){
-      const val=parseFloat(v);
-      state.length=clamp(isNaN(val)?0:val,0,5);
-      el('lengthRange').value=state.length; el('lengthNum').value=state.length;
+    function setHeightFromNumber(v){
+      const val = Math.max(0, parseFloat(v)||0);
+      state.height = val;
+      el('heightNum').value = val;
+      el('heightRange').value = Math.min(5, val);
+    }
+    function setLengthFromSlider(v){
+      const val = clamp(parseFloat(v)||0, 0, 5);
+      state.length = val;
+      el('lengthRange').value = val;
+      el('lengthNum').value = val;
+    }
+    function setLengthFromNumber(v){
+      const val = Math.max(0, parseFloat(v)||0);
+      state.length = val;
+      el('lengthNum').value = val;
+      el('lengthRange').value = Math.min(5, val);
     }
 
     // Materiais helpers
@@ -275,19 +289,20 @@
       wrap.dataset.cardW = String(card.getBoundingClientRect().width);
     }
 
-    // Segmentação horizontal: max 4 m entre colunas
-    function segmentCells(innerCellsX, w){
+    // Segmentação horizontal (considera largura EXTERNA)
+    function segmentCells(innerCellsX, w, desiredSegs=1){
       const maxPer = Math.max(1, Math.floor((4-1e-9)/w));
-      const segs = Math.max(1, Math.ceil(innerCellsX/maxPer));
-      const base = Math.floor(innerCellsX/segs), rem=innerCellsX%segs;
-      const segCells = Array.from({length:segs}, (_,i)=> base+(i<rem?1:0));
+      const segsByInner = Math.max(1, Math.ceil(innerCellsX / maxPer));
+      const segs = Math.max(desiredSegs, segsByInner);
+      const base = Math.floor(innerCellsX / segs);
+      const rem  = innerCellsX % segs;
+      const segCells = Array.from({length:segs}, (_,i)=> base + (i<rem?1:0));
       const bounds=[0]; for(let i=0;i<segs;i++) bounds.push(bounds[i]+segCells[i]);
       return {segs, segCells, bounds};
     }
 
     function gerarGrade(){
       const w = parseFloat(el('width').value), Hm=state.height, Wm=state.length;
-      const res = el('results'); res.innerHTML='';
 
       const innerL = Math.max(0, Wm - 2*w);
       const innerV = Math.max(0, Hm - 2*w);
@@ -295,7 +310,9 @@
       const innerCellsY = Math.max(0, Math.round(innerV / w + 1e-6));
       const cellsX = innerCellsX + 2, cellsY = innerCellsY + 2;
 
-      const {segs, segCells, bounds} = segmentCells(innerCellsX, w);
+      // força segmentos pela largura EXTERNA
+      const desiredSegs = Math.max(1, Math.ceil((Wm + 1e-9) / 4)); // 4.00 -> 2
+      const {segs, segCells, bounds} = segmentCells(innerCellsX, w, desiredSegs);
       const supports = Math.max(0, segs-1);
       const supportCells = bounds.slice(1,-1);
 
@@ -349,7 +366,7 @@
         addPiece(svg, x, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
       });
 
-      // dimensiona de verdade
+      // dimensiona
       sizeSVGToFit(svg, nW, nH);
 
       // ===== Materiais =====
@@ -407,7 +424,7 @@
         </svg>`
       );
 
-      // Cabeçalho com meta "Q25 5m × 2m"
+      // Cabeçalho com meta "Q25 Xm × Ym"
       const qLabel = `Q${Math.round(w*100)}`;
       const meta = `${fmtMShort(Wm)} × ${fmtMShort(Hm)}`;
       let list = `
@@ -430,7 +447,7 @@
           </div>`;
       });
 
-      // Pés e Pesos
+      // Pés e Pesos (usando as variáveis já calculadas)
       list += `
         <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
           <span class="sw">${footIcon(32)}</span>
@@ -443,7 +460,7 @@
 
       list += '</div>';
 
-      el('results').innerHTML = list;
+      document.getElementById('results').innerHTML = list;
     }
 
     // Toggle riscado no item inteiro
@@ -499,14 +516,15 @@
 
     // Events
     el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
-    el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
-    el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
-    el('lengthRange').addEventListener('input', e=> syncLength(e.target.value));
-    el('lengthNum').addEventListener('input',   e=> syncLength(e.target.value));
+
+    el('heightRange').addEventListener('input', e=> setHeightFromSlider(e.target.value));
+    el('heightNum').addEventListener('input',   e=> setHeightFromNumber(e.target.value));
+    el('lengthRange').addEventListener('input', e=> setLengthFromSlider(e.target.value));
+    el('lengthNum').addEventListener('input',   e=> setLengthFromNumber(e.target.value));
 
     el('calcBtn').addEventListener('click', ()=>{ gerarGrade(); requestAnimationFrame(gerarGrade); });
     el('resetBtn').addEventListener('click', ()=>{
-      syncHeight(0); syncLength(0);
+      setHeightFromNumber(0); setLengthFromNumber(0);
       el('grid').innerHTML=''; el('results').innerHTML=''; el('eventInput').value='';
       el('gridWrap').style.minHeight = '220px';
     });
@@ -518,7 +536,11 @@
       sizeSVGToFit(svg, state.lastNW, state.lastNH);
     });
 
-    (function(){ syncStepsFromWidth(); syncLength(0); syncHeight(0); })();
+    (function(){
+      syncStepsFromWidth();
+      setLengthFromNumber(0);
+      setHeightFromNumber(0);
+    })();
   </script>
 </body>
 </html>
