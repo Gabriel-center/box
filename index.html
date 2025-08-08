@@ -50,8 +50,10 @@
     .export-header input{flex:1 1 280px; border:1px solid var(--line); padding:10px; border-radius:8px; min-width:200px}
 
     .preview-wrap{display:grid; grid-template-columns:1fr; gap:12px}
-    #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
-    #grid{position:relative; width:100%; height:100%; transform-origin:top left}
+    #gridWrap{
+      overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px
+    }
+    #grid{position:relative; width:100%}
 
     /* Itens/legenda fora do card */
     #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:16px}
@@ -105,7 +107,7 @@
       </div>
     </section>
 
-    <!-- PRÉVIA + RESULTADOS (só o essencial dentro do card) -->
+    <!-- PRÉVIA + RESULTADOS -->
     <section class="panel">
       <div class="export-card" id="exportCard">
         <div class="export-header">
@@ -143,8 +145,11 @@
   </div>
 
   <script>
+    // ===== Config =====
+    const VIEWPORT_CAP = 0.8; // 80% da altura da tela
+
     // ===== Estado/Utils =====
-    const state = { trussWidth:0.25, height:0, length:0, cellPxPerMeter:100, borderMarginPx:1 };
+    const state = { trussWidth:0.25, height:0, length:0, cellPxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0 };
     const el = id => document.getElementById(id);
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
     const near = (a,b,eps=1e-6)=>Math.abs(a-b)<eps;
@@ -199,19 +204,53 @@
       svg.appendChild(g);
     }
 
-    // === Fit-by-width, cap height to viewport ===
-    function fitToWidthCapByViewport(nW,nH){
+    // Helpers: métricas de caixa
+    function boxMetrics(elm, view=window){
+      const cs = view.getComputedStyle(elm);
+      const padL = parseFloat(cs.paddingLeft)||0, padR = parseFloat(cs.paddingRight)||0;
+      const padT = parseFloat(cs.paddingTop)||0,  padB = parseFloat(cs.paddingBottom)||0;
+      const borL = parseFloat(cs.borderLeftWidth)||0, borR = parseFloat(cs.borderRightWidth)||0;
+      const borT = parseFloat(cs.borderTopWidth)||0,  borB = parseFloat(cs.borderBottomWidth)||0;
+      const contentW = elm.clientWidth - padL - padR; // clientWidth inclui padding
+      return {padL,padR,padT,padB,borL,borR,borT,borB,contentW};
+    }
+
+    // Dimensiona o SVG de verdade (sem transform), guarda tudo em data-*
+    function sizeSVGToFit(svg, nW, nH){
       const wrap = el('gridWrap');
-      const availW = wrap.clientWidth;                     // width of canvas area on screen
-      let scale = availW / nW;                             // scale to fill width
-      const maxH = window.innerHeight;                     // viewport height cap
-      if (nH * scale > maxH) scale = maxH / nH;            // if too tall, scale down
-      const grid = el('grid');
-      grid.style.transform = `scale(${scale})`;
-      const scaledH = nH * scale + 12;
-      // keep canvas height reasonable but never exceed viewport
-      const min = 220;
-      wrap.style.minHeight = Math.min(Math.max(scaledH, min), maxH) + 'px';
+      const card = el('exportCard');
+      const m = boxMetrics(wrap);
+
+      let scale = m.contentW / nW;                      // enche a largura útil
+      const capH = window.innerHeight * VIEWPORT_CAP;   // teto de altura absoluta
+      const totalH = nH * scale + m.padT + m.padB + m.borT + m.borB;
+
+      if (totalH > capH) {
+        scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;   // reduz para caber
+      }
+
+      const targetW = Math.max(1, Math.round(nW * scale));
+      const targetH = Math.max(1, Math.round(nH * scale));
+
+      // aplica ao DOM vivo
+      svg.setAttribute('width', targetW);
+      svg.setAttribute('height', targetH);
+      wrap.style.minHeight = (targetH + m.padT + m.padB) + 'px';
+      wrap.style.overflow = 'hidden';
+
+      // salva para o clone
+      wrap.dataset.scale = String(scale);
+      wrap.dataset.nw = String(nW);
+      wrap.dataset.nh = String(nH);
+      wrap.dataset.tW = String(targetW);
+      wrap.dataset.tH = String(targetH);
+      wrap.dataset.padT = String(m.padT);
+      wrap.dataset.padB = String(m.padB);
+      wrap.dataset.padL = String(m.padL);
+      wrap.dataset.padR = String(m.padR);
+      wrap.dataset.borL = String(m.borL);
+      wrap.dataset.borR = String(m.borR);
+      wrap.dataset.cardW = String(card.getBoundingClientRect().width);
     }
 
     function segmentCells(innerCellsX, w){
@@ -243,10 +282,10 @@
 
       const cellPx = state.cellPxPerMeter * w; const m = state.borderMarginPx;
       const nW = cellsX*cellPx + 2*m, nH = cellsY*cellPx + 2*m;
+      state.lastNW = nW; state.lastNH = nH;
 
       const grid = el('grid'); grid.innerHTML='';
       const svg = document.createElementNS(SVGNS,'svg');
-      svg.setAttribute('width', nW); svg.setAttribute('height', nH);
       svg.setAttribute('viewBox', `0 0 ${nW} ${nH}`);
       svg.setAttribute('preserveAspectRatio','xMinYMin meet');
       svg.appendChild(makePatternDefs());
@@ -287,8 +326,8 @@
         addPiece(svg, x, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
       });
 
-      // Preenche largura, mas nunca deixa a altura passar da do display
-      fitToWidthCapByViewport(nW,nH);
+      // dimensiona de verdade (sem transform)
+      sizeSVGToFit(svg, nW, nH);
 
       // Materiais (curto)
       const totals = {}; sizes.forEach(s=>totals[s]=0);
@@ -327,23 +366,23 @@
       el('leg-1m').innerHTML = sw('4',18);
       el('leg-05m').innerHTML= sw('2',18);
       el('leg-outros').innerHTML = sw('1',18);
-
-      // debug
-      el('debugInfo').textContent =
-        `innerL(m): ${innerL.toFixed(3)} | innerV(m): ${innerV.toFixed(3)}\n`+
-        `cellsX x cellsY: ${cellsX} x ${cellsY}\n`+
-        `segments: ${segs} | supports: ${supports}\n`+
-        `bounds(cells): [${bounds.join(', ')}]`;
     }
 
-    // Download: match on-screen width and cap height to viewport inside the clone
+    // Download: aplica os mesmos números (sem recalcular)
     function baixarCartao(){
       const card = el('exportCard');
+      const wrapLive = el('gridWrap');
       const titulo = (el('eventInput').value || 'trelica-card').trim().replace(/[^\w\-]+/g,'_');
 
-      const liveCardW = card.getBoundingClientRect().width;
-      const liveWrapW = el('gridWrap').getBoundingClientRect().width;
-      const displayH = window.innerHeight;
+      const tW  = parseFloat(wrapLive.dataset.tW)||0;
+      const tH  = parseFloat(wrapLive.dataset.tH)||0;
+      const padT= parseFloat(wrapLive.dataset.padT)||0;
+      const padB= parseFloat(wrapLive.dataset.padB)||0;
+      const padL= parseFloat(wrapLive.dataset.padL)||0;
+      const padR= parseFloat(wrapLive.dataset.padR)||0;
+      const borL= parseFloat(wrapLive.dataset.borL)||0;
+      const borR= parseFloat(wrapLive.dataset.borR)||0;
+      const cardW = parseFloat(wrapLive.dataset.cardW) || card.getBoundingClientRect().width;
 
       html2canvas(card, {
         backgroundColor:'#FFFFFF',
@@ -356,22 +395,17 @@
           const svg  = grid.querySelector('svg');
           if(!svg) return;
 
-          // lock widths like the live view
-          doc.documentElement.style.width = liveCardW + 'px';
-          doc.body.style.width = liveCardW + 'px';
-          cloneCard.style.width = liveCardW + 'px';
-          wrap.style.width = liveWrapW + 'px';
+          // trava as mesmas larguras usadas na tela
+          doc.documentElement.style.width = cardW + 'px';
+          doc.body.style.width = cardW + 'px';
+          cloneCard.style.width = cardW + 'px';
 
-          // remove screen transform and scale SVG to width, but cap by display height
-          grid.style.transform = 'scale(1)';
-          const natW = parseFloat(svg.getAttribute('width'));
-          const natH = parseFloat(svg.getAttribute('height'));
-          let s = liveWrapW / natW;
-          if (natH * s > displayH) s = displayH / natH;  // cap by viewport height
-          svg.setAttribute('width', natW * s);
-          svg.setAttribute('height', natH * s);
-          wrap.style.minHeight = (natH * s + 12) + 'px';
-          wrap.style.overflow = 'visible';
+          // aplica exatamente os tamanhos do SVG e do wrapper
+          svg.setAttribute('width',  tW);
+          svg.setAttribute('height', tH);
+          wrap.style.width = (tW + padL + padR + borL + borR) + 'px';
+          wrap.style.minHeight = (tH + padT + padB) + 'px';
+          wrap.style.overflow = 'hidden';
         }
       }).then(canvas=>{
         const a = document.createElement('a');
@@ -393,14 +427,20 @@
     el('calcBtn').addEventListener('click', ()=>{ gerarGrade(); requestAnimationFrame(gerarGrade); });
     el('resetBtn').addEventListener('click', ()=>{
       syncHeight(0); syncLength(0);
-      el('grid').innerHTML=''; el('results').innerHTML=''; el('debugInfo').textContent=''; el('eventInput').value='';
+      el('grid').innerHTML=''; el('results').innerHTML=''; el('eventInput').value='';
       el('gridWrap').style.minHeight = '220px';
     });
     el('downloadBtn').addEventListener('click', baixarCartao);
 
+    // Redimensiona sem redesenhar as peças: só re-aplica tamanho do SVG
+    window.addEventListener('resize', ()=>{
+      const grid = el('grid'); const svg = grid.querySelector('svg');
+      if (!svg || !state.lastNW || !state.lastNH) return;
+      sizeSVGToFit(svg, state.lastNW, state.lastNH);
+    });
+
     // Init
     (function(){ syncStepsFromWidth(); syncHeight(0); syncLength(0); })();
-    window.addEventListener('resize', ()=>{ if(el('grid').children.length) gerarGrade(); });
   </script>
 </body>
 </html>
