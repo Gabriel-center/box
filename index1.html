@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Calculadora de Treliça Box</title>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    :root{
+      --bg:#003366; --ink:#FFFFFF; --card:#FFFFFF; --brand:#0055cc; --accent:#0077cc;
+      --muted:#f0f0f0; --line:#0077cc; --shadow:0 6px 18px rgba(0,0,0,.12); --radius:12px;
+      --fs-base: clamp(15px, 1.1vw + 0.6rem, 16px);
+      --fs-h1: clamp(20px, 1.2vw + 1rem, 22px);
+      --field-pad: 12px; --track-h: 12px; --thumb: 26px;
+    }
+    @media (max-width:640px){
+      :root{ --fs-base: clamp(16px, 3.8vw, 18px); --fs-h1: clamp(20px, 4.6vw, 24px); --field-pad: 14px; --track-h: 16px; --thumb: 32px; }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{ font-family:Arial,sans-serif; color:var(--ink); background:var(--bg); display:flex; justify-content:center; align-items:flex-start; margin:0; padding:16px; font-size:var(--fs-base); -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; -webkit-tap-highlight-color:transparent; }
+
+    .page{width:100%; max-width:1200px; display:grid; grid-template-columns:1fr; gap:16px}
+    @media (min-width:980px){ .page{grid-template-columns:380px 1fr; gap:18px} }
+
+    .panel{ background:var(--card); color:var(--brand); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px }
+    .panel h1{ margin:0 0 10px; font-size:var(--fs-h1); color:var(--accent); text-align:center }
+
+    .row{ display:grid; grid-template-columns:1fr; gap:8px; margin:10px 0 }
+    label{font-size:0.95em}
+    select,input,button{ width:100%; padding:var(--field-pad); border-radius:8px; border:1px solid var(--line); background:#fff; color:#000; font-size:1em; touch-action:manipulation }
+
+    input[type="range"]{ -webkit-appearance:none; appearance:none; width:100%; background:transparent; height:calc(var(--thumb) + 6px) }
+    input[type="range"]::-webkit-slider-runnable-track{ height:var(--track-h); background:#e6f0ff; border:1px solid var(--line); border-radius:999px }
+    input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; width:var(--thumb); height:var(--thumb); background:var(--accent); border-radius:50%; border:2px solid #fff; box-shadow:0 1px 2px rgba(0,0,0,.25); margin-top:calc((var(--track-h) - var(--thumb))/2); cursor:pointer }
+    input[type="range"]::-moz-range-track{ height:var(--track-h); background:#e6f0ff; border:1px solid var(--line); border-radius:999px }
+    input[type="range"]::-moz-range-thumb{ width:var(--thumb); height:var(--thumb); background:var(--accent); border:2px solid #fff; border-radius:50%; box-shadow:0 1px 2px rgba(0,0,0,.25); cursor:pointer }
+
+    .inline{ display:grid; grid-template-columns:1fr 160px; gap:10px; align-items:center }
+    @media (max-width:640px){ .inline{ grid-template-columns:1fr; gap:8px } }
+
+    .actions{ display:flex; gap:10px; margin-top:10px; flex-wrap:wrap }
+    .actions .grow{ flex:1; min-width:180px }
+    button.primary{ background:var(--accent); color:#fff; border:1px solid var(--accent); cursor:pointer }
+    button.primary:disabled{ opacity:.6; cursor:not-allowed }
+    @media (max-width:640px){ .panel{padding:14px} .actions{gap:8px} .actions .grow{min-width:unset} }
+
+    #snapNote{ font-size:0.85em; color:#333; min-height:1.3em }
+
+    .export-card{ background:#fff; border:1px solid var(--muted); border-radius:var(--radius); padding:12px; color:#000 }
+    .export-header{ display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap }
+    .export-title{ font-weight:bold; color:#000 }
+    .export-header input{ flex:1 1 280px; border:1px solid var(--line); padding:var(--field-pad); border-radius:8px; min-width:200px }
+
+    .preview-wrap{ display:grid; grid-template-columns:1fr; gap:12px }
+    #gridWrap{ overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px }
+    #grid{ position:relative; width:100% }
+
+    #results{ background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:1em }
+    .results-title{ display:flex; align-items:center; gap:8px; margin:2px 0 10px }
+    .results-title .t-left{ font-size:1.1em; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:.5px }
+    .results-title .title-rule{ flex:1; height:1px; background:var(--line); opacity:.35 }
+    .results-title .t-meta{ font-weight:700; color:#222; white-space:nowrap }
+
+    .checklist{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px 16px; margin-top:10px }
+    .checklist-item{ display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none; padding:2px 0 }
+    .checklist-item .sw{ width:36px; height:36px; display:inline-block; flex:0 0 36px }
+    .checklist-item label{ flex:1 }
+    .checklist-item.off label{ text-decoration:line-through; color:#666 }
+    .checklist-item.off .sw{ opacity:.45 }
+    @media (max-width:520px){ .checklist{ grid-template-columns:1fr } }
+
+    /* ⚙️ Depuração via painel */
+    .debug-gear{ position:fixed; right:14px; bottom:14px; width:48px; height:48px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:.65; z-index:50; user-select:none; cursor:pointer }
+    .debug-gear:hover{ opacity:.9 }
+    .debug-panel{ position:fixed; right:14px; bottom:74px; width:min(92vw, 420px); max-height:75vh; overflow:auto; background:#fff; color:#000; border:1px solid #ddd; border-radius:12px; box-shadow:0 10px 22px rgba(0,0,0,.3); padding:12px; z-index:60; display:none }
+    .debug-panel h3{ margin:0 0 8px; color:#000 }
+    .debug-panel pre{ margin:0; white-space:pre-wrap; font-family:monospace; font-size:12px }
+
+    /* Modal */
+    .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:100 }
+    .modal{ background:#fff; color:#000; border:1px solid #ddd; border-radius:12px; padding:16px; width:min(92vw,420px); box-shadow:0 12px 28px rgba(0,0,0,.35) }
+    .modal h3{ margin:0 0 8px; color:#000; font-size:1.05em }
+    .modal p{ margin:6px 0 12px; color:#111 }
+    .modal .opt{ display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end }
+    .modal .opt button{ padding:10px 14px; border-radius:10px; border:1px solid var(--line); background:#fff; cursor:pointer }
+    .modal .opt button.primary{ background:var(--accent); color:#fff; border-color:var(--accent) }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- CONTROLES -->
+    <section class="panel" aria-labelledby="calc-title">
+      <h1 id="calc-title">Calculadora de Treliça Box</h1>
+
+      <div class="row">
+        <label for="width">Largura do perfil (metros)</label>
+        <select id="width" aria-describedby="width-help">
+          <option value="0.25" selected>0.25</option>
+          <option value="0.15">0.15</option>
+        </select>
+        <small id="width-help" style="color:#2b2b2b">O passo dos controles segue a construtibilidade de cada perfil.</small>
+      </div>
+
+      <div class="row">
+        <label>Comprimento (metros)</label>
+        <div class="inline">
+          <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="5" step="0.25" value="0">
+          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" step="any" value="0" inputmode="decimal" placeholder="ex.: 8">
+        </div>
+      </div>
+
+      <div class="row">
+        <label>Altura (metros)</label>
+        <div class="inline">
+          <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="5" step="0.25" value="0">
+          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" step="any" value="0" inputmode="decimal" placeholder="ex.: 3.5">
+        </div>
+      </div>
+
+      <div id="snapNote"></div>
+
+      <div class="actions">
+        <button id="calcBtn" class="primary grow">Calcular grade e materiais</button>
+        <button id="resetBtn" class="grow" title="Limpar">Limpar</button>
+      </div>
+    </section>
+
+    <!-- PRÉVIA + RESULTADOS -->
+    <section class="panel">
+      <div class="export-card" id="exportCard">
+        <div class="export-header">
+          <span class="export-title">Evento/OS:</span>
+          <input id="eventInput" type="text" placeholder="Opcional — título do cartão">
+        </div>
+
+        <div class="preview-wrap">
+          <div id="gridWrap" aria-live="polite" aria-label="Prévia da treliça">
+            <div id="grid"></div>
+          </div>
+
+          <div id="results" aria-label="Lista de materiais"></div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="downloadBtn" class="primary grow">Baixar cartão como PNG</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- ⚙️ Painel de depuração (somente logs/texto) -->
+  <div id="debugGear" class="debug-gear" title="Depuração">⚙️</div>
+  <div id="debugPanel" class="debug-panel" aria-hidden="true">
+    <h3>Depuração</h3>
+    <pre id="debugText"></pre>
+  </div>
+
+  <!-- Modal escolha de arredondamento -->
+  <div id="modal" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <h3 id="modalTitle">Valor inválido</h3>
+      <p id="modalText"></p>
+      <div class="opt">
+        <button id="modalKeep">Manter digitado</button>
+        <button id="modalDown">Arredondar para baixo</button>
+        <button id="modalUp" class="primary">Arredondar para cima</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const VIEWPORT_CAP = 0.8; // limite de altura da prévia
+
+    const state = { trussWidth:0.25, height:0, length:0, pxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0, lastDebug:"" };
+    const el = id => document.getElementById(id);
+    const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
+    const fmt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2});
+    const fmtInt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:0});
+    const fmtMShort = n => `${Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2})}m`;
+
+    // ====== Construtibilidade ======
+    const STEP = 0.05; // 5 cm (m.d.c. de 0.5 e 0.25/0.15)
+    const toUnits = m => Math.max(0, Math.floor((m + 1e-9)/STEP));
+    const fromUnits = u => u * STEP;
+    const quantize = (val, step=STEP) => Number((Math.round(val/step)*step).toFixed(2));
+
+    function maxConstructiblePieces(targetMeters, sizesMeters){
+      const den = sizesMeters.map(s => Math.round(s/STEP));
+      const T = toUnits(targetMeters);
+      const dp = new Array(T+1).fill(false);
+      const prev = new Array(T+1).fill(-1);
+      dp[0] = true;
+      for(let i=1;i<=T;i++){
+        for(let k=0;k<den.length;k++){
+          const d = den[k];
+          if (i - d >= 0 && dp[i - d]){ dp[i] = true; prev[i] = k; break; }
+        }
+      }
+      let best = T; while(best >= 0 && !dp[best]) best--;
+      if (best < 0) return { length:0, pieces:[], dpMask:dp };
+      const pieces = []; let u = best;
+      while(u > 0){ const k = prev[u]; if (k < 0) break; pieces.push({ meters: den[k]*STEP }); u -= den[k]; }
+      pieces.sort((a,b)=>b.meters - a.meters);
+      return { length: fromUnits(best), pieces, dpMask:dp };
+    }
+
+    function decomposeExact(targetMeters, sizesMeters){
+      const sizes = [...sizesMeters].sort((a,b)=>b-a);
+      const den = sizes.map(s => Math.round(s/STEP));
+      const T = toUnits(targetMeters);
+      const INF = 1e9;
+      const dp = new Array(T+1).fill(INF);
+      const prev = new Array(T+1).fill(-1);
+      const coin = new Array(T+1).fill(-1);
+      dp[0] = 0;
+      for(let t=1;t<=T;t++){
+        for(let i=0;i<den.length;i++){
+          const d = den[i];
+          if (t-d>=0 && dp[t-d]+1 < dp[t]){ dp[t] = dp[t-d]+1; prev[t] = t-d; coin[t]=i; }
+        }
+      }
+      let best = T; while(best>0 && dp[best]===INF) best--;
+      if (best<0) return { length:0, counts:{}, pieces:[] };
+      const counts = {}; sizesMeters.forEach(s=>counts[s]=0);
+      const pieces = [];
+      let cur = best;
+      while(cur>0){ const i = coin[cur]; if (i<0) break; const size = sizes[i]; counts[size]=(counts[size]||0)+1; pieces.push({ meters:size, code: size>=2?'8':size>=1?'4':size>=0.5?'2':'1' }); cur = prev[cur]; }
+      pieces.sort((a,b)=>b.meters-a.meters);
+      return { length: fromUnits(best), counts, pieces };
+    }
+
+    function sanitizeExternal(E, q){ if (E <= 0) return 0; const sizes=[2,1,0.5,q]; const Ltarget = Math.max(0, E - 2*q); const { length: L } = maxConstructiblePieces(Ltarget, sizes); return quantize(2*q + L, STEP); }
+    function isConstructibleExternal(E,q){ if (E<=0) return true; const sizes=[2,1,0.5,q]; const Ltarget = E - 2*q; if (Ltarget < 0) return false; const r = decomposeExact(Ltarget, sizes); return Math.abs(r.length - Ltarget) < 1e-9; }
+    function nextConstructible(E,q,dir){ const sizes=[2,1,0.5,q]; for(let i=1;i<=2000;i++){ const cand = quantize(E + dir*i*STEP, STEP); if (cand < 0) continue; const Ltarget = cand - 2*q; if (Ltarget < 0) continue; const r = decomposeExact(Ltarget, sizes); if (Math.abs(r.length - Ltarget) < 1e-9) return cand; } return null; }
+
+    // ====== Desenho ======
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    function makePatternDefs(){ const defs = document.createElementNS(SVGNS,'defs'); defs.innerHTML = `
+        <pattern id="patRed" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern>
+        <pattern id="patOrange" patternUnits="userSpaceOnUse" width="10" height="10"><path d="M0,0 L0,10 M0,0 L10,0" stroke="rgba(0,0,0,0.18)" stroke-width="2"/></pattern>
+        <pattern id="patGreen" patternUnits="userSpaceOnUse" width="16" height="16"><circle cx="5" cy="5" r="2.5" fill="rgba(0,0,0,0.25)"/></pattern>
+        <pattern id="patBlue" patternUnits="userSpaceOnUse" width="16" height="16"><path d="M-4,16 L16,-4 M0,20 L20,0" stroke="rgba(255,255,255,0.28)" stroke-width="3"/></pattern>`; return defs; }
+    const baseColor = code => code==='8'?'#FF0000':code==='4'?'#ff6600':code==='2'?'#008000':code==='1'?'#0000FF':'#FFFFFF';
+    const patId = code => code==='8'?'#patRed':code==='4'?'#patOrange':code==='2'?'#patGreen':code==='1'?'#patBlue':null;
+    function addPiece(svg, x,y,w,h, code){ const g=document.createElementNS(SVGNS,'g'); const r1=document.createElementNS(SVGNS,'rect'); r1.setAttribute('x',x); r1.setAttribute('y',y); r1.setAttribute('width',w); r1.setAttribute('height',h); r1.setAttribute('fill', baseColor(code)); g.appendChild(r1); const pid=patId(code); if(pid){ const r2=document.createElementNS(SVGNS,'rect'); r2.setAttribute('x',x); r2.setAttribute('y',y); r2.setAttribute('width',w); r2.setAttribute('height',h); r2.setAttribute('fill',`url(${pid})`); g.appendChild(r2); } const r3=document.createElementNS(SVGNS,'rect'); r3.setAttribute('x',x+0.5); r3.setAttribute('y',y+0.5); r3.setAttribute('width',w-1); r3.setAttribute('height',h-1); r3.setAttribute('fill','none'); r3.setAttribute('stroke','#aaa'); r3.setAttribute('stroke-width','1'); g.appendChild(r3); svg.appendChild(g); }
+
+    function boxMetrics(elm, view=window){ const cs = view.getComputedStyle(elm); const padL = parseFloat(cs.paddingLeft)||0, padR = parseFloat(cs.paddingRight)||0; const padT = parseFloat(cs.paddingTop)||0,  padB = parseFloat(cs.paddingBottom)||0; const borL = parseFloat(cs.borderLeftWidth)||0, borR = parseFloat(cs.borderRightWidth)||0; const borT = parseFloat(cs.borderTopWidth)||0,  borB = parseFloat(cs.borderBottomWidth)||0; const contentW = elm.clientWidth - padL - padR; return {padL,padR,padT,padB,borL,borR,borT,borB,contentW}; }
+    function sizeSVGToFit(svg, nW, nH){ const wrap = el('gridWrap'); const card = el('exportCard'); const m = boxMetrics(wrap); let scale = m.contentW / nW; const capH = window.innerHeight * VIEWPORT_CAP; const totalH = nH * scale + m.padT + m.padB + m.borT + m.borB; if (totalH > capH) { scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH; } const targetW = Math.max(1, Math.round(nW * scale)); const targetH = Math.max(1, Math.round(nH * scale)); svg.setAttribute('width', targetW); svg.setAttribute('height', targetH); wrap.style.minHeight = (targetH + m.padT + m.padB) + 'px'; wrap.style.overflow = 'hidden'; wrap.dataset.scale = String(scale); wrap.dataset.nw = String(nW); wrap.dataset.nh = String(nH); wrap.dataset.tW = String(targetW); wrap.dataset.tH = String(targetH); wrap.dataset.padT = String(m.padT); wrap.dataset.padB = String(m.padB); wrap.dataset.padL = String(m.padL); wrap.dataset.padR = String(m.padR); wrap.dataset.borL = String(m.borL); wrap.dataset.borR = String(m.borR); wrap.dataset.cardW = String(card.getBoundingClientRect().width); }
+
+    // Particiona horizontal em trechos <= 4 m, tentando uniformizar
+    function partitionPiecesEven(pieces, segMin, maxPer=4, tol=0.25){
+      const total = pieces.reduce((a,p)=>a+p.meters, 0);
+      if (total === 0) return { groups:[], boundaries:[], lengths:[] };
+      let target = total / segMin; if (target > maxPer) target = maxPer;
+      const groups = []; let cur = []; let curSum = 0;
+      for (const p of pieces){
+        if (curSum + p.meters <= maxPer && (curSum + p.meters) <= (target + tol)){ cur.push(p); curSum += p.meters; }
+        else { if (cur.length === 0){ cur.push(p); curSum += p.meters; } else { groups.push(cur); cur=[p]; curSum=p.meters; } }
+      }
+      if (cur.length) groups.push(cur);
+      while (groups.length < segMin){
+        let idx=0, bestLen=0; for (let i=0;i<groups.length;i++){ const L = groups[i].reduce((a,p)=>a+p.meters,0); if (L>bestLen && groups[i].length>1){ bestLen=L; idx=i; } }
+        if (!bestLen) break;
+        const g=groups[idx]; const half=bestLen/2; let acc=0, cut=1; for(let j=0;j<g.length;j++){ if (acc + g[j].meters > half){ cut=j; break; } acc+=g[j].meters; cut=j+1; }
+        const g1=g.slice(0,cut), g2=g.slice(cut); const L1=g1.reduce((a,p)=>a+p.meters,0), L2=g2.reduce((a,p)=>a+p.meters,0);
+        if (L1>0 && L2>0 && L1<=maxPer && L2<=maxPer) groups.splice(idx,1,g1,g2); else break;
+      }
+      let changed=true; while (groups.length>segMin && changed){ changed=false; for(let i=0;i<groups.length-1;i++){ const L1=groups[i].reduce((a,p)=>a+p.meters,0), L2=groups[i+1].reduce((a,p)=>a+p.meters,0); if (L1+L2<=maxPer){ groups.splice(i,2,groups[i].concat(groups[i+1])); changed=true; break; } } }
+      const boundaries=[]; const lengths=[]; let accM=0; for(let i=0;i<groups.length;i++){ const L=groups[i].reduce((a,p)=>a+p.meters,0); lengths.push(L); if(i<groups.length-1){ accM+=L; boundaries.push(accM); } }
+      return { groups, boundaries, lengths };
+    }
+
+    function gerarGrade(){
+      const q = parseFloat(el('width').value);
+      const sizes = [2,1,0.5,q];
+
+      const Wext = state.length;
+      const Hext = state.height;
+
+      const PPM = state.pxPerMeter, m = state.borderMarginPx;
+      const innerL = Math.max(0, Wext - 2*q); const innerV = Math.max(0, Hext - 2*q);
+
+      const hDec = decomposeExact(innerL, sizes); const hPiecesAll = hDec.pieces;
+      const vDec = decomposeExact(innerV, sizes); const vPieces = vDec.pieces;
+
+      const typedLen = parseFloat(el('lengthNum').value)||0; const typedHei = parseFloat(el('heightNum').value)||0;
+      const note = [];
+      if (Math.abs(typedLen - Wext) > 1e-6) note.push(`Comprimento ajustado para ${fmt(Wext)} m`);
+      if (Math.abs(typedHei - Hext) > 1e-6) note.push(`Altura ajustada para ${fmt(Hext)} m`);
+      el('snapNote').textContent = note.join(' · ');
+
+      const segMin = Math.max(1, Math.ceil((Wext + 1e-9) / 4));
+      const { groups, boundaries, lengths } = partitionPiecesEven(hPiecesAll, segMin, 4, 0.25);
+
+      const cornerPx = q * PPM; const innerPxX = innerL * PPM; const innerPxY = innerV * PPM;
+      const nW = 2*cornerPx + innerPxX + 2*m; const nH = 2*cornerPx + innerPxY + 2*m; state.lastNW = nW; state.lastNH = nH;
+
+      const grid = el('grid'); grid.innerHTML=''; const svg = document.createElementNS(SVGNS,'svg');
+      svg.setAttribute('viewBox', `0 0 ${nW} ${nH}`); svg.setAttribute('preserveAspectRatio','xMinYMin meet'); svg.appendChild(makePatternDefs()); grid.appendChild(svg);
+
+      const topY = m, bottomY = m + cornerPx + innerPxY; const leftX = m, rightX  = m + cornerPx + innerPxX;
+      // Cantos
+      addPiece(svg, leftX, topY, cornerPx, cornerPx, '1');
+      addPiece(svg, rightX, topY, cornerPx, cornerPx, '1');
+      addPiece(svg, leftX, bottomY, cornerPx, cornerPx, '1');
+      addPiece(svg, rightX, bottomY, cornerPx, cornerPx, '1');
+      // Topo e base
+      let xTop = leftX + cornerPx;
+      groups.forEach(group=>{ group.forEach(p=>{ const wpx = p.meters * PPM; const code = p.meters>=2?'8':p.meters>=1?'4':p.meters>=0.5?'2':'1'; addPiece(svg, xTop, topY, wpx, cornerPx, code); addPiece(svg, xTop, bottomY, wpx, cornerPx, code); xTop += wpx; }); });
+      // Colunas
+      function drawColumn(x){ let y = topY + cornerPx; vPieces.forEach(p=>{ const hp = p.meters * PPM; const code = p.meters>=2?'8':p.meters>=1?'4':p.meters>=0.5?'2':'1'; addPiece(svg, x, y, cornerPx, hp, code); y += hp; }); }
+      drawColumn(leftX); drawColumn(rightX);
+      if (innerPxX>0 && innerPxY>0){ addPiece(svg, leftX + cornerPx, topY + cornerPx, innerPxX, innerPxY, '0'); }
+      boundaries.forEach(bm=>{ const x = leftX + cornerPx + bm * PPM; drawColumn(x); addPiece(svg, x, topY, cornerPx, cornerPx, '1'); addPiece(svg, x, bottomY, cornerPx, cornerPx, '1'); });
+
+      sizeSVGToFit(svg, nW, nH);
+
+      // ===== Materiais =====
+      const totals = {}; sizes.forEach(s=>totals[s]=0);
+      const colunas = Math.max(0, groups.length - 1) + 2; // suportes + laterais
+      // verticais
+      const vQuant = {}; sizes.forEach(s=>vQuant[s]=0); vPieces.forEach(p=>{ vQuant[p.meters] = (vQuant[p.meters]||0) + 1; }); sizes.forEach(s=>{ totals[s] += colunas * (vQuant[s]||0); });
+      // horizontais topo+base
+      const hQuant = {}; sizes.forEach(s=>hQuant[s]=0); groups.forEach(g=> g.forEach(p=>{ hQuant[p.meters] = (hQuant[p.meters]||0) + 1; })); sizes.forEach(s=>{ totals[s] += 2 * (hQuant[s]||0); });
+      // cantos
+      totals[q] = (totals[q]||0) + 4;
+
+      // Swatches
+      const sw = (code,side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}"><defs><pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern><pattern id="p2" patternUnits="userSpaceOnUse" width="10" height="10"><path d="M0,0 L0,10 M0,0 L10,0" stroke="rgba(0,0,0,0.18)" stroke-width="2"/></pattern><pattern id="p3" patternUnits="userSpaceOnUse" width="16" height="16"><circle cx="5" cy="5" r="2.5" fill="rgba(0,0,0,0.25)"/></pattern><pattern id="p4" patternUnits="userSpaceOnUse" width="16" height="16"><path d="M-4,16 L16,-4 M0,20 L20,0" stroke="rgba(255,255,255,0.28)" stroke-width="3"/></pattern></defs><rect width="${side}" height="${side}" fill="${baseColor(code)}"/><rect width="${side}" height="${side}" fill="url(#${code==='8'?'p1':code==='4'?'p2':code==='2'?'p3':'p4'})"/><rect x="0.5" y="0.5" width="${side-1}" height="${side-1}" fill="none" stroke="#777" stroke-width="1"/></svg>`;
+      const footIcon = (side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28"><rect x="5" y="5" width="6" height="16" fill="#555"/><rect x="3" y="20" width="22" height="4" rx="1" ry="1" fill="#333"/><circle cx="8" cy="9" r="2" fill="#999"/><rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/></svg>`;
+      const weightIcon = (side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28"><rect x="6" y="12" width="16" height="4" rx="1" ry="1" fill="#444"/><rect x="3" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/><rect x="21" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/><rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/></svg>`;
+
+      const qLabel = `Q${Math.round(q*100)}`; const meta = `${fmtMShort(Wext)} × ${fmtMShort(Hext)}`;
+      let list = `<div class=\"results-title\"><span class=\"t-left\">Materiais</span><span class=\"title-rule\"></span><span class=\"t-meta\" id=\"resultsMeta\">${qLabel} ${meta}</span></div><div class=\"checklist\">`;
+      const orderedAll = [q, 0.5, 1, 2].sort((a,b)=>a-b);
+      orderedAll.forEach(size=>{ const qnt = totals[size] || 0; const code = size>=2?'8':size>=1?'4':size>=0.5?'2':'1'; list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${sw(code,36)}</span><label>${fmtInt(qnt)} unidades de ${fmt(size)} metros</label></div>`; });
+      // usa a variável colunas já criada acima (sem redeclarar)
+      list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${footIcon(36)}</span><label>${fmtInt(colunas)} Pés (0,5)</label></div>`;
+      list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${weightIcon(36)}</span><label>${fmtInt(colunas*2)} Pesos</label></div>`;
+      list += '</div>';
+      el('results').innerHTML = list;
+
+      // ===== Logs detalhados no painel ⚙️ =====
+      const posSuportes = boundaries.map(b=>fmt(b)).join(' | ') || '—';
+      const lenSuportes = lengths.map(L=>fmt(L)).join(' | ') || '—';
+      const logH = hPiecesAll.map(p=>p.meters.toFixed(2)).join(' + ') || '—';
+      const logV = vPieces.map(p=>p.meters.toFixed(2)).join(' + ') || '—';
+      const debugText = [
+        `Perfil: Q${Math.round(q*100)}`,
+        `Tamanho externo: ${fmt(Wext)} m × ${fmt(Hext)} m`,
+        `Área interna útil (sem cantos): ${fmt(innerL)} m × ${fmt(innerV)} m`,
+        `Segmentação horizontal (<=4 m): ${lenSuportes}`,
+        `Suportes internos (x a partir da esquerda): ${posSuportes}`,
+        `Top/Base (decomposição): ${logH}`,
+        `Colunas (decomposição): ${logV}`
+      ].join('\n');
+      state.lastDebug = debugText;
+      const panel = el('debugPanel'); if (panel.getAttribute('aria-hidden')==='false'){ el('debugText').textContent = state.lastDebug; }
+    }
+
+    // ====== UI helpers ======
+    function toggleItem(node){ node.classList.toggle('off'); }
+
+    function baixarCartao(){ const card = el('exportCard'); const wrapLive = el('gridWrap'); let rawTitle = (el('eventInput').value || '').trim(); if (!rawTitle) rawTitle = 'Qcoisa'; const titulo = rawTitle.replace(/[^\w\-]+/g,'_'); const tW  = parseFloat(wrapLive.dataset.tW)||0; const tH  = parseFloat(wrapLive.dataset.tH)||0; const padT= parseFloat(wrapLive.dataset.padT)||0; const padB= parseFloat(wrapLive.dataset.padB)||0; const padL= parseFloat(wrapLive.dataset.padL)||0; const padR= parseFloat(wrapLive.dataset.padR)||0; const borL= parseFloat(wrapLive.dataset.borL)||0; const borR= parseFloat(wrapLive.dataset.borR)||0; const cardW = parseFloat(wrapLive.dataset.cardW) || card.getBoundingClientRect().width; html2canvas(card, { backgroundColor:'#FFFFFF', scale: window.devicePixelRatio || 2, useCORS:true, onclone: (doc)=>{ const cloneCard = doc.getElementById('exportCard'); const wrap = cloneCard.querySelector('#gridWrap'); const grid = cloneCard.querySelector('#grid'); const svg  = grid.querySelector('svg'); if(!svg) return; doc.documentElement.style.width = cardW + 'px'; doc.body.style.width = cardW + 'px'; cloneCard.style.width = cardW + 'px'; svg.setAttribute('width',  tW); svg.setAttribute('height', tH); wrap.style.width = (tW + padL + padR + borL + borR) + 'px'; wrap.style.minHeight = (tH + padT + padB) + 'px'; wrap.style.overflow = 'hidden'; } }).then(canvas=>{ const a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=`${titulo}.png`; document.body.appendChild(a); a.click(); document.body.removeChild(a); }); }
+
+    // ====== Modal ======
+    function showModal(text){ return new Promise(resolve=>{ const m = el('modal'); el('modalText').innerHTML = text; m.style.display='flex'; m.setAttribute('aria-hidden','false'); const off = ()=>{ m.style.display='none'; m.setAttribute('aria-hidden','true'); el('modalKeep').onclick=null; el('modalDown').onclick=null; el('modalUp').onclick=null; }; el('modalKeep').onclick = ()=>{ off(); resolve('keep'); }; el('modalDown').onclick = ()=>{ off(); resolve('down'); }; el('modalUp').onclick   = ()=>{ off(); resolve('up'); }; }); }
+    async function promptInvalidDimension(label, raw, q){ const down = sanitizeExternal(raw, q); const up = nextConstructible(raw, q, +1); const qLbl = `Q${Math.round(q*100)}`; const msg = `O valor <b>${fmt(raw)} m</b> para <b>${label}</b> não é montável com <b>${qLbl}</b>.<br>Escolha uma opção:`; const choice = await showModal(`${msg}<br><small>Baixo: ${fmt(down)} m · Cima: ${up?fmt(up):'—'}</small>`); if (choice === 'down') return { value: down, updateField: true }; if (choice === 'up' && up!=null) return { value: up, updateField: true }; return { value: down, updateField: false }; }
+
+    async function handleCalculate(){
+      const q = parseFloat(el('width').value);
+      let Lraw = parseFloat(el('lengthNum').value); if (!isFinite(Lraw)) Lraw = 0;
+      let Hraw = parseFloat(el('heightNum').value); if (!isFinite(Hraw)) Hraw = 0;
+
+      if (isConstructibleExternal(Lraw, q)){
+        state.length = quantize(Lraw);
+        el('lengthRange').value = Math.min(5, state.length).toFixed(2);
+      } else {
+        const res = await promptInvalidDimension('Comprimento', Lraw, q);
+        state.length = res.value;
+        el('lengthRange').value = Math.min(5, state.length).toFixed(2);
+        if (res.updateField) el('lengthNum').value = state.length.toFixed(2);
+      }
+
+      if (isConstructibleExternal(Hraw, q)){
+        state.height = quantize(Hraw);
+        el('heightRange').value = Math.min(5, state.height).toFixed(2);
+      } else {
+        const resH = await promptInvalidDimension('Altura', Hraw, q);
+        state.height = resH.value;
+        el('heightRange').value = Math.min(5, state.height).toFixed(2);
+        if (resH.updateField) el('heightNum').value = state.height.toFixed(2);
+      }
+
+      gerarGrade(); requestAnimationFrame(gerarGrade);
+    }
+
+    function syncStepsFromWidth(){ const q = parseFloat(el('width').value); const stepBase = (q === 0.15) ? 0.05 : 0.25; ['heightRange','lengthRange'].forEach(id=>{ el(id).step = stepBase; }); }
+
+    // ====== Eventos ======
+    el('debugGear').addEventListener('click', ()=>{ const p=el('debugPanel'); const open = p.getAttribute('aria-hidden')==='false'; if (open){ p.style.display='none'; p.setAttribute('aria-hidden','true'); } else { el('debugText').textContent = state.lastDebug || 'Sem dados ainda. Calcule primeiro.'; p.style.display='block'; p.setAttribute('aria-hidden','false'); } });
+
+    el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
+    el('heightRange').addEventListener('input', e=>{ const q=parseFloat(el('width').value); const raw=clamp(parseFloat(e.target.value)||0, 0, 5); const san=sanitizeExternal(raw,q); state.height=san; el('heightNum').value=san.toFixed(2); });
+    el('lengthRange').addEventListener('input', e=>{ const q=parseFloat(el('width').value); const raw=clamp(parseFloat(e.target.value)||0, 0, 5); const san=sanitizeExternal(raw,q); state.length=san; el('lengthNum').value=san.toFixed(2); });
+    el('heightNum').addEventListener('input',   ()=>{/* digitação livre */});
+    el('lengthNum').addEventListener('input',   ()=>{/* digitação livre */});
+
+    el('calcBtn').addEventListener('click', handleCalculate);
+    el('resetBtn').addEventListener('click', ()=>{ el('heightNum').value='0'; el('lengthNum').value='0'; state.height=0; state.length=0; el('grid').innerHTML=''; el('results').innerHTML=''; el('eventInput').value=''; el('gridWrap').style.minHeight = '220px'; el('snapNote').textContent=''; state.lastDebug=''; });
+    el('downloadBtn').addEventListener('click', baixarCartao);
+
+    window.addEventListener('resize', ()=>{ const grid = el('grid'); const svg = grid.querySelector('svg'); if (!svg || !state.lastNW || !state.lastNH) return; sizeSVGToFit(svg, state.lastNW, state.lastNH); });
+
+    // ====== Self-tests mínimos ======
+    function runSelfTests(){
+      const approx=(a,b)=>Math.abs(a-b)<1e-9;
+      const cases=[
+        {E:0.35,q:0.15,want:0.30, label:'Q15 0.35→0.30'},
+        {E:0.50,q:0.15,want:0.45, label:'Q15 0.50→0.45'},
+        {E:0.65,q:0.15,want:0.60, label:'Q15 0.65→0.60'},
+        {E:1.00,q:0.15,want:0.95, label:'Q15 1.00→0.95'},
+        {E:1.21,q:0.15,want:1.20, label:'Q15 1.21→1.20'},
+        {E:0.80,q:0.15,want:0.80, label:'Q15 0.80 ok'},
+        {E:1.30,q:0.15,want:1.30, label:'Q15 1.30 ok'},
+        {E:0.60,q:0.25,want:0.50, label:'Q25 0.60→0.50'},
+        {E:1.25,q:0.25,want:1.25, label:'Q25 1.25 ok'}
+      ];
+      let fails=0; for(const t of cases){ const got=sanitizeExternal(t.E,t.q); const pass=approx(got,t.want); if(!pass){ console.error(`[SelfTest] ${t.label}: got=${got} want=${t.want}`); fails++; } }
+      if(fails>0) console.warn(`[SelfTest] Falhas: ${fails}`);
+    }
+
+    (function init(){ syncStepsFromWidth(); el('lengthNum').value='0'; el('heightNum').value='0'; runSelfTests(); })();
+  </script>
+</body>
+</html>
