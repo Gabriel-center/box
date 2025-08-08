@@ -43,7 +43,7 @@
       .actions{gap:8px}
     }
 
-    /* Card exportável (título, desenho, materiais, tamanho externo no rodapé) */
+    /* Card exportável */
     .export-card{background:#fff; border:1px solid var(--muted); border-radius:var(--radius); padding:12px; color:#000}
     .export-header{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
     .export-title{font-weight:bold; color:#000}
@@ -53,38 +53,40 @@
     #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
     #grid{position:relative; width:100%}
 
-    /* Materiais – título destacado + duas colunas, quadrados maiores */
+    /* Materiais – título com meta à direita + grid 2 colunas, ícones 32px */
     #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:16px}
     .results-title{
       display:flex; align-items:center; gap:8px;
+      margin:2px 0 10px;
+    }
+    .results-title .t-left{
       font-size:18px; font-weight:800; color:var(--accent);
-      text-transform:uppercase; letter-spacing:.5px; margin:2px 0 10px;
+      text-transform:uppercase; letter-spacing:.5px;
     }
-    .results-title::after{
-      content:""; height:1px; background:var(--line); opacity:.35; flex:1;
+    .results-title .title-rule{
+      flex:1; height:1px; background:var(--line); opacity:.35;
     }
+    .results-title .t-meta{
+      font-weight:700; color:#222; white-space:nowrap;
+    }
+
     .checklist{
       display:grid;
       grid-template-columns:repeat(2, minmax(0,1fr));
-      grid-auto-flow:column;
-      grid-template-rows:repeat(2, auto);
       gap:12px 16px;
       margin-top:10px;
     }
-    .checklist-item{display:flex; align-items:center; gap:10px}
-    .checklist-item .sw{width:28px; height:28px; display:inline-block}
-    .checklist-item label{flex:1; cursor:pointer}
-    .checklist-item label.strikethrough{text-decoration:line-through; color:#666}
-
-    /* Rodapé com tamanho externo */
-    .results-footer{
-      margin-top:12px; padding-top:10px; border-top:1px solid rgba(0,0,0,.12);
-      font-weight:600; display:flex; gap:8px; align-items:center;
+    .checklist-item{
+      display:flex; align-items:center; gap:10px; cursor:pointer;
+      user-select:none;
     }
-    .results-footer .label{color:#222}
+    .checklist-item .sw{width:32px; height:32px; display:inline-block; flex:0 0 32px}
+    .checklist-item label{flex:1}
+    .checklist-item.off label{text-decoration:line-through; color:#666}
+    .checklist-item.off .sw{opacity:.45}
 
     @media (max-width:520px){
-      .checklist{grid-template-columns:1fr; grid-auto-flow:row; grid-template-rows:auto}
+      .checklist{grid-template-columns:1fr}
     }
 
     details{margin-top:12px; background:var(--muted); padding:10px 12px; border-radius:10px; color:#000}
@@ -165,6 +167,8 @@
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
     const near = (a,b,eps=1e-6)=>Math.abs(a-b)<eps;
     const fmt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2});
+    const fmtInt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:0});
+    const fmtMShort = n => `${Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2})}m`;
 
     function syncStepsFromWidth(){
       const s=parseFloat(el('width').value);
@@ -181,6 +185,7 @@
       el('lengthRange').value=state.length; el('lengthNum').value=state.length;
     }
 
+    // Materiais helpers
     function calcMateriais(dim, sizes){ const q={}; sizes.sort((a,b)=>b-a); sizes.forEach(s=>q[s]=0); let r=Math.max(0,+dim.toFixed(6));
       for(const s of sizes){ while(r+1e-9>=s){ q[s]++; r=+(r-s).toFixed(6); } } return q; }
     function distPecas(q, w){ const arr=[], ks=Object.keys(q).map(parseFloat).sort((a,b)=>b-a);
@@ -188,6 +193,7 @@
       return arr;
     }
 
+    // SVG helpers
     const SVGNS = 'http://www.w3.org/2000/svg';
     function makePatternDefs(){
       const defs = document.createElementNS(SVGNS,'defs');
@@ -208,6 +214,7 @@
     }
     function baseColor(code){ return code==='8'?'#FF0000':code==='4'?'#ff6600':code==='2'?'#008000':code==='1'?'#0000FF':'#FFFFFF'; }
     function patId(code){ return code==='8'?'#patRed':code==='4'?'#patOrange':code==='2'?'#patGreen':code==='1'?'#patBlue':null; }
+
     function addPiece(svg, x,y,w,h, code){
       const g = document.createElementNS(SVGNS,'g');
       const r1 = document.createElementNS(SVGNS,'rect'); r1.setAttribute('x',x); r1.setAttribute('y',y); r1.setAttribute('width',w); r1.setAttribute('height',h); r1.setAttribute('fill', baseColor(code));
@@ -222,6 +229,7 @@
       svg.appendChild(g);
     }
 
+    // Box metrics
     function boxMetrics(elm, view=window){
       const cs = view.getComputedStyle(elm);
       const padL = parseFloat(cs.paddingLeft)||0, padR = parseFloat(cs.paddingRight)||0;
@@ -232,6 +240,7 @@
       return {padL,padR,padT,padB,borL,borR,borT,borB,contentW};
     }
 
+    // Fit SVG into wrap
     function sizeSVGToFit(svg, nW, nH){
       const wrap = el('gridWrap');
       const card = el('exportCard');
@@ -266,6 +275,7 @@
       wrap.dataset.cardW = String(card.getBoundingClientRect().width);
     }
 
+    // Segmentação horizontal: max 4 m entre colunas
     function segmentCells(innerCellsX, w){
       const maxPer = Math.max(1, Math.floor((4-1e-9)/w));
       const segs = Math.max(1, Math.ceil(innerCellsX/maxPer));
@@ -339,20 +349,33 @@
         addPiece(svg, x, m+(cellsY-1)*cellPx, cellPx, cellPx, '1');
       });
 
-      // dimensiona de verdade (sem transform)
+      // dimensiona de verdade
       sizeSVGToFit(svg, nW, nH);
 
-      // ===== Materiais (curto) =====
+      // ===== Materiais =====
       const totals = {}; sizes.forEach(s=>totals[s]=0);
-      sizes.forEach(s=>{ totals[s] += (2 + supports) * (qVert[s] || 0); }); // verticais
-      const sumSeg={}; sizes.forEach(s=>sumSeg[s]=0);
-      for(let i=0;i<segs;i++){ const meters=segCells[i]*w; const qi=calcMateriais(meters, sizes); sizes.forEach(s=>sumSeg[s]+=qi[s]||0); }
-      sizes.forEach(s=>{ totals[s] += 2 * (sumSeg[s] || 0); }); // horizontais
-      totals[w] = (totals[w]||0) + 4;                          // cantos
-      const colunas = supports + 2;                             // pés = 1 por coluna
-      totals[0.5] = (totals[0.5] || 0) + colunas;
 
-      const sw = (code,side=28)=>(
+      // Verticais: laterais + suportes
+      sizes.forEach(s=>{ totals[s] += (2 + supports) * (qVert[s] || 0); });
+
+      // Horizontais: topo e base por segmento
+      const sumSeg={}; sizes.forEach(s=>sumSeg[s]=0);
+      for(let i=0;i<segs;i++){
+        const meters=segCells[i]*w; const qi=calcMateriais(meters, sizes);
+        sizes.forEach(s=>sumSeg[s]+=qi[s]||0);
+      }
+      sizes.forEach(s=>{ totals[s] += 2 * (sumSeg[s] || 0); });
+
+      // Cantos
+      totals[w] = (totals[w]||0) + 4;
+
+      // Pés e Pesos (sempre mostrados)
+      const colunas = supports + 2;
+      const feetCount = colunas;       // 1 por coluna
+      const weightCount = colunas * 2; // 2 por coluna
+
+      // swatches padrão (cores+patterns) — 32px
+      const sw = (code,side=32)=>(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">
            <defs>
              <pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern>
@@ -366,25 +389,72 @@
          </svg>`
       );
 
-      const ordered = Object.keys(totals).map(parseFloat).sort((a,b)=>a-b);
+      // Ícones especiais — 32px
+      const footIcon = (side=32)=>(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28">
+          <rect x="5" y="5" width="6" height="16" fill="#555"/>
+          <rect x="3" y="20" width="22" height="4" rx="1" ry="1" fill="#333"/>
+          <circle cx="8" cy="9" r="2" fill="#999"/>
+          <rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/>
+        </svg>`
+      );
+      const weightIcon = (side=32)=>(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28">
+          <rect x="6" y="12" width="16" height="4" rx="1" ry="1" fill="#444"/>
+          <rect x="3" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/>
+          <rect x="21" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/>
+          <rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/>
+        </svg>`
+      );
 
-      // Título + lista (duas colunas), depois rodapé com tamanho externo
-      let list = '<div class="results-title">Materiais</div><div class="checklist">';
-      ordered.forEach(t=>{
-        const qnt = totals[t], code = near(t,2)?'8':near(t,1)?'4':near(t,0.5)?'2':'1';
-        list += `<div class="checklist-item"><span class="sw">${sw(code,28)}</span><label onclick="this.classList.toggle('strikethrough')">${qnt} unidades de ${fmt(t)} metros</label></div>`;
+      // Cabeçalho com meta "Q25 5m × 2m"
+      const qLabel = `Q${Math.round(w*100)}`;
+      const meta = `${fmtMShort(Wm)} × ${fmtMShort(Hm)}`;
+      let list = `
+        <div class="results-title">
+          <span class="t-left">Materiais</span>
+          <span class="title-rule"></span>
+          <span class="t-meta" id="resultsMeta">${qLabel} ${meta}</span>
+        </div>
+        <div class="checklist">`;
+
+      // Mostrar todos os tamanhos (mesmo zero)
+      const orderedAll = [w, 0.5, 1, 2].sort((a,b)=>a-b);
+      orderedAll.forEach(t=>{
+        const qnt = totals[t] || 0;
+        const code = near(t,2)?'8':near(t,1)?'4':near(t,0.5)?'2':'1';
+        list += `
+          <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
+            <span class="sw">${sw(code,32)}</span>
+            <label>${fmtInt(qnt)} unidades de ${fmt(t)} metros</label>
+          </div>`;
       });
+
+      // Pés e Pesos
+      list += `
+        <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
+          <span class="sw">${footIcon(32)}</span>
+          <label>${fmtInt(feetCount)} Pés (0,5)</label>
+        </div>
+        <div class="checklist-item" onclick="toggleItem(this)" role="button" tabindex="0">
+          <span class="sw">${weightIcon(32)}</span>
+          <label>${fmtInt(weightCount)} Pesos</label>
+        </div>`;
+
       list += '</div>';
 
-      const footer = `<div class="results-footer"><span class="label">Tamanho externo:</span> ${fmt(Wm)} m × ${fmt(Hm)} m</div>`;
-
-      el('results').innerHTML = list + footer;
+      el('results').innerHTML = list;
     }
+
+    // Toggle riscado no item inteiro
+    function toggleItem(node){ node.classList.toggle('off'); }
 
     function baixarCartao(){
       const card = el('exportCard');
       const wrapLive = el('gridWrap');
-      const titulo = (el('eventInput').value || 'trelica-card').trim().replace(/[^\w\-]+/g,'_');
+      let rawTitle = (el('eventInput').value || '').trim();
+      if (!rawTitle) rawTitle = 'Qcoisa';
+      const titulo = rawTitle.replace(/[^\w\-]+/g,'_');
 
       const tW  = parseFloat(wrapLive.dataset.tW)||0;
       const tH  = parseFloat(wrapLive.dataset.tH)||0;
@@ -407,12 +477,10 @@
           const svg  = grid.querySelector('svg');
           if(!svg) return;
 
-          // mesma largura da tela
           doc.documentElement.style.width = cardW + 'px';
           doc.body.style.width = cardW + 'px';
           cloneCard.style.width = cardW + 'px';
 
-          // aplica tamanhos já calculados
           svg.setAttribute('width',  tW);
           svg.setAttribute('height', tH);
           wrap.style.width = (tW + padL + padR + borL + borR) + 'px';
@@ -429,6 +497,7 @@
       });
     }
 
+    // Events
     el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
     el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
     el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
