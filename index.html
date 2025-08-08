@@ -43,7 +43,7 @@
       .actions{gap:8px}
     }
 
-    /* Card exportável (apenas título, desenho, tamanho externo, materiais) */
+    /* Card exportável (título, desenho, materiais, tamanho externo no rodapé) */
     .export-card{background:#fff; border:1px solid var(--muted); border-radius:var(--radius); padding:12px; color:#000}
     .export-header{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
     .export-title{font-weight:bold; color:#000}
@@ -53,17 +53,39 @@
     #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
     #grid{position:relative; width:100%}
 
-    /* Itens/legenda fora do card */
+    /* Materiais – título destacado + duas colunas, quadrados maiores */
     #results{background:var(--muted); border-radius:10px; padding:12px; color:#000; font-size:16px}
-    .checklist{margin-top:8px}
-    .checklist-item{display:flex; align-items:center; gap:10px; margin-bottom:8px}
-    .checklist-item .sw{display:inline-block; width:20px; height:20px}
+    .results-title{
+      display:flex; align-items:center; gap:8px;
+      font-size:18px; font-weight:800; color:var(--accent);
+      text-transform:uppercase; letter-spacing:.5px; margin:2px 0 10px;
+    }
+    .results-title::after{
+      content:""; height:1px; background:var(--line); opacity:.35; flex:1;
+    }
+    .checklist{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      grid-auto-flow:column;
+      grid-template-rows:repeat(2, auto);
+      gap:12px 16px;
+      margin-top:10px;
+    }
+    .checklist-item{display:flex; align-items:center; gap:10px}
+    .checklist-item .sw{width:28px; height:28px; display:inline-block}
     .checklist-item label{flex:1; cursor:pointer}
     .checklist-item label.strikethrough{text-decoration:line-through; color:#666}
 
-    .legend{display:grid; grid-template-columns:repeat(4, minmax(120px,1fr)); gap:10px; margin-top:6px; font-size:13px; color:#000}
-    .legend-item{display:flex; gap:8px; align-items:center}
-    .legend-swatch{width:18px; height:18px}
+    /* Rodapé com tamanho externo */
+    .results-footer{
+      margin-top:12px; padding-top:10px; border-top:1px solid rgba(0,0,0,.12);
+      font-weight:600; display:flex; gap:8px; align-items:center;
+    }
+    .results-footer .label{color:#222}
+
+    @media (max-width:520px){
+      .checklist{grid-template-columns:1fr; grid-auto-flow:row; grid-template-rows:auto}
+    }
 
     details{margin-top:12px; background:var(--muted); padding:10px 12px; border-radius:10px; color:#000}
     summary{cursor:pointer; font-weight:600; color:#000}
@@ -83,7 +105,7 @@
         <small id="width-help" style="color:#2b2b2b">O passo dos controles segue esta largura.</small>
       </div>
 
-      <!-- ORDEM INVERTIDA: COMPRIMENTO (HORIZONTAL) PRIMEIRO -->
+      <!-- Comprimento (horizontal) primeiro -->
       <div class="row">
         <label>Comprimento (metros)</label>
         <div class="inline">
@@ -123,14 +145,6 @@
         </div>
       </div>
 
-      <!-- Legenda fora do card -->
-      <div class="legend" aria-label="Legenda">
-        <div class="legend-item"><span class="legend-swatch" id="leg-2m"></span><span>2,0 m</span></div>
-        <div class="legend-item"><span class="legend-swatch" id="leg-1m"></span><span>1,0 m</span></div>
-        <div class="legend-item"><span class="legend-swatch" id="leg-05m"></span><span>0,5 m</span></div>
-        <div class="legend-item"><span class="legend-swatch" id="leg-outros"></span><span>Outros</span></div>
-      </div>
-
       <!-- Botão de download FORA do card -->
       <div class="actions">
         <button id="downloadBtn" class="primary grow">Baixar cartão como PNG</button>
@@ -144,10 +158,8 @@
   </div>
 
   <script>
-    // ===== Config =====
-    const VIEWPORT_CAP = 0.8; // mude se quiser outro teto
+    const VIEWPORT_CAP = 0.8;
 
-    // ===== Estado/Utils =====
     const state = { trussWidth:0.25, height:0, length:0, cellPxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0 };
     const el = id => document.getElementById(id);
     const clamp = (v,min,max)=>Math.max(min,Math.min(max,v));
@@ -169,7 +181,6 @@
       el('lengthRange').value=state.length; el('lengthNum').value=state.length;
     }
 
-    // Materiais
     function calcMateriais(dim, sizes){ const q={}; sizes.sort((a,b)=>b-a); sizes.forEach(s=>q[s]=0); let r=Math.max(0,+dim.toFixed(6));
       for(const s of sizes){ while(r+1e-9>=s){ q[s]++; r=+(r-s).toFixed(6); } } return q; }
     function distPecas(q, w){ const arr=[], ks=Object.keys(q).map(parseFloat).sort((a,b)=>b-a);
@@ -177,9 +188,7 @@
       return arr;
     }
 
-    // ===== Single-SVG grid =====
     const SVGNS = 'http://www.w3.org/2000/svg';
-
     function makePatternDefs(){
       const defs = document.createElementNS(SVGNS,'defs');
       defs.innerHTML = `
@@ -199,7 +208,6 @@
     }
     function baseColor(code){ return code==='8'?'#FF0000':code==='4'?'#ff6600':code==='2'?'#008000':code==='1'?'#0000FF':'#FFFFFF'; }
     function patId(code){ return code==='8'?'#patRed':code==='4'?'#patOrange':code==='2'?'#patGreen':code==='1'?'#patBlue':null; }
-
     function addPiece(svg, x,y,w,h, code){
       const g = document.createElementNS(SVGNS,'g');
       const r1 = document.createElementNS(SVGNS,'rect'); r1.setAttribute('x',x); r1.setAttribute('y',y); r1.setAttribute('width',w); r1.setAttribute('height',h); r1.setAttribute('fill', baseColor(code));
@@ -214,40 +222,36 @@
       svg.appendChild(g);
     }
 
-    // Helpers: métricas de caixa
     function boxMetrics(elm, view=window){
       const cs = view.getComputedStyle(elm);
       const padL = parseFloat(cs.paddingLeft)||0, padR = parseFloat(cs.paddingRight)||0;
       const padT = parseFloat(cs.paddingTop)||0,  padB = parseFloat(cs.paddingBottom)||0;
       const borL = parseFloat(cs.borderLeftWidth)||0, borR = parseFloat(cs.borderRightWidth)||0;
       const borT = parseFloat(cs.borderTopWidth)||0,  borB = parseFloat(cs.borderBottomWidth)||0;
-      const contentW = elm.clientWidth - padL - padR; // clientWidth inclui padding
+      const contentW = elm.clientWidth - padL - padR;
       return {padL,padR,padT,padB,borL,borR,borT,borB,contentW};
     }
 
-    // Dimensiona o SVG de verdade (sem transform), guarda tudo em data-*
     function sizeSVGToFit(svg, nW, nH){
       const wrap = el('gridWrap');
       const card = el('exportCard');
       const m = boxMetrics(wrap);
 
-      let scale = m.contentW / nW;                      // enche a largura útil
-      const capH = window.innerHeight * VIEWPORT_CAP;   // teto de altura
+      let scale = m.contentW / nW;
+      const capH = window.innerHeight * VIEWPORT_CAP;
       const totalH = nH * scale + m.padT + m.padB + m.borT + m.borB;
       if (totalH > capH) {
-        scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;   // reduz para caber
+        scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;
       }
 
       const targetW = Math.max(1, Math.round(nW * scale));
       const targetH = Math.max(1, Math.round(nH * scale));
 
-      // aplica ao DOM vivo
       svg.setAttribute('width', targetW);
       svg.setAttribute('height', targetH);
       wrap.style.minHeight = (targetH + m.padT + m.padB) + 'px';
       wrap.style.overflow = 'hidden';
 
-      // salva para o clone
       wrap.dataset.scale = String(scale);
       wrap.dataset.nw = String(nW);
       wrap.dataset.nh = String(nH);
@@ -338,15 +342,17 @@
       // dimensiona de verdade (sem transform)
       sizeSVGToFit(svg, nW, nH);
 
-      // Materiais (curto)
+      // ===== Materiais (curto) =====
       const totals = {}; sizes.forEach(s=>totals[s]=0);
-      sizes.forEach(s=>{ totals[s] += (2+supports)*(qVert[s]||0); });
+      sizes.forEach(s=>{ totals[s] += (2 + supports) * (qVert[s] || 0); }); // verticais
       const sumSeg={}; sizes.forEach(s=>sumSeg[s]=0);
       for(let i=0;i<segs;i++){ const meters=segCells[i]*w; const qi=calcMateriais(meters, sizes); sizes.forEach(s=>sumSeg[s]+=qi[s]||0); }
-      sizes.forEach(s=>{ totals[s] += 2*(sumSeg[s]||0); });
-      totals[w] = (totals[w]||0)+4; totals[0.5]=(totals[0.5]||0)+2;
+      sizes.forEach(s=>{ totals[s] += 2 * (sumSeg[s] || 0); }); // horizontais
+      totals[w] = (totals[w]||0) + 4;                          // cantos
+      const colunas = supports + 2;                             // pés = 1 por coluna
+      totals[0.5] = (totals[0.5] || 0) + colunas;
 
-      const sw = (code,side=18)=>(
+      const sw = (code,side=28)=>(
         `<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}">
            <defs>
              <pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern>
@@ -361,23 +367,20 @@
       );
 
       const ordered = Object.keys(totals).map(parseFloat).sort((a,b)=>a-b);
-      let list = '<div><strong>Materiais</strong></div><div class="checklist">';
+
+      // Título + lista (duas colunas), depois rodapé com tamanho externo
+      let list = '<div class="results-title">Materiais</div><div class="checklist">';
       ordered.forEach(t=>{
         const qnt = totals[t], code = near(t,2)?'8':near(t,1)?'4':near(t,0.5)?'2':'1';
-        list += `<div class="checklist-item"><span class="sw">${sw(code,18)}</span><label onclick="this.classList.toggle('strikethrough')">${qnt} unidades de ${fmt(t)} metros</label></div>`;
+        list += `<div class="checklist-item"><span class="sw">${sw(code,28)}</span><label onclick="this.classList.toggle('strikethrough')">${qnt} unidades de ${fmt(t)} metros</label></div>`;
       });
       list += '</div>';
 
-      el('results').innerHTML = `<div><strong>Tamanho externo:</strong> ${fmt(Wm)} m × ${fmt(Hm)} m</div>` + list;
+      const footer = `<div class="results-footer"><span class="label">Tamanho externo:</span> ${fmt(Wm)} m × ${fmt(Hm)} m</div>`;
 
-      // legenda fora do card
-      el('leg-2m').innerHTML = sw('8',18);
-      el('leg-1m').innerHTML = sw('4',18);
-      el('leg-05m').innerHTML= sw('2',18);
-      el('leg-outros').innerHTML = sw('1',18);
+      el('results').innerHTML = list + footer;
     }
 
-    // Download: aplica os mesmos números (sem recalcular)
     function baixarCartao(){
       const card = el('exportCard');
       const wrapLive = el('gridWrap');
@@ -404,12 +407,12 @@
           const svg  = grid.querySelector('svg');
           if(!svg) return;
 
-          // travar as mesmas larguras usadas na tela
+          // mesma largura da tela
           doc.documentElement.style.width = cardW + 'px';
           doc.body.style.width = cardW + 'px';
           cloneCard.style.width = cardW + 'px';
 
-          // aplicar exatamente os tamanhos do SVG e do wrapper
+          // aplica tamanhos já calculados
           svg.setAttribute('width',  tW);
           svg.setAttribute('height', tH);
           wrap.style.width = (tW + padL + padR + borL + borR) + 'px';
@@ -426,7 +429,6 @@
       });
     }
 
-    // Eventos
     el('width').addEventListener('change', ()=>{ state.trussWidth=parseFloat(el('width').value); syncStepsFromWidth(); });
     el('heightRange').addEventListener('input', e=> syncHeight(e.target.value));
     el('heightNum').addEventListener('input',   e=> syncHeight(e.target.value));
@@ -441,16 +443,13 @@
     });
     el('downloadBtn').addEventListener('click', baixarCartao);
 
-    // Redimensiona sem redesenhar as peças: só re-aplica tamanho do SVG
     window.addEventListener('resize', ()=>{
       const grid = el('grid'); const svg = grid.querySelector('svg');
       if (!svg || !state.lastNW || !state.lastNH) return;
       sizeSVGToFit(svg, state.lastNW, state.lastNH);
     });
 
-    // Init
     (function(){ syncStepsFromWidth(); syncLength(0); syncHeight(0); })();
   </script>
 </body>
 </html>
-
