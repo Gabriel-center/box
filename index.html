@@ -50,9 +50,7 @@
     .export-header input{flex:1 1 280px; border:1px solid var(--line); padding:10px; border-radius:8px; min-width:200px}
 
     .preview-wrap{display:grid; grid-template-columns:1fr; gap:12px}
-    #gridWrap{
-      overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px
-    }
+    #gridWrap{overflow:hidden; border:1px solid #ddd; border-radius:10px; padding:8px; background:#fff; min-height:220px}
     #grid{position:relative; width:100%}
 
     /* Itens/legenda fora do card */
@@ -85,19 +83,20 @@
         <small id="width-help" style="color:#2b2b2b">O passo dos controles segue esta largura.</small>
       </div>
 
+      <!-- ORDEM INVERTIDA: COMPRIMENTO (HORIZONTAL) PRIMEIRO -->
       <div class="row">
-        <label>Altura (metros)</label>
+        <label>Comprimento (metros)</label>
         <div class="inline">
-          <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="30" step="0.25" value="0">
-          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+          <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="5" step="0.25" value="0">
+          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" max="5" step="0.25" value="0" inputmode="decimal">
         </div>
       </div>
 
       <div class="row">
-        <label>Comprimento (metros)</label>
+        <label>Altura (metros)</label>
         <div class="inline">
-          <input aria-label="Comprimento (slider)" type="range" id="lengthRange" min="0" max="30" step="0.25" value="0">
-          <input aria-label="Comprimento (número)" type="number" id="lengthNum" min="0" max="30" step="0.25" value="0" inputmode="decimal">
+          <input aria-label="Altura (slider)" type="range" id="heightRange" min="0" max="5" step="0.25" value="0">
+          <input aria-label="Altura (número)" type="number" id="heightNum" min="0" max="5" step="0.25" value="0" inputmode="decimal">
         </div>
       </div>
 
@@ -146,7 +145,7 @@
 
   <script>
     // ===== Config =====
-    const VIEWPORT_CAP = 0.8; // 80% da altura da tela
+    const VIEWPORT_CAP = 0.8; // mude se quiser outro teto
 
     // ===== Estado/Utils =====
     const state = { trussWidth:0.25, height:0, length:0, cellPxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0 };
@@ -155,9 +154,20 @@
     const near = (a,b,eps=1e-6)=>Math.abs(a-b)<eps;
     const fmt = n => Number(n).toLocaleString('pt-BR',{maximumFractionDigits:2});
 
-    function syncStepsFromWidth(){ const s=parseFloat(el('width').value); ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>el(id).step=s); }
-    function syncHeight(v){ const val=parseFloat(v); state.height=clamp(isNaN(val)?0:val,0,1000); el('heightRange').value=state.height; el('heightNum').value=state.height; }
-    function syncLength(v){ const val=parseFloat(v); state.length=clamp(isNaN(val)?0:val,0,1000); el('lengthRange').value=state.length; el('lengthNum').value=state.length; }
+    function syncStepsFromWidth(){
+      const s=parseFloat(el('width').value);
+      ['heightRange','lengthRange','heightNum','lengthNum'].forEach(id=>el(id).step=s);
+    }
+    function syncHeight(v){
+      const val=parseFloat(v);
+      state.height=clamp(isNaN(val)?0:val,0,5);
+      el('heightRange').value=state.height; el('heightNum').value=state.height;
+    }
+    function syncLength(v){
+      const val=parseFloat(v);
+      state.length=clamp(isNaN(val)?0:val,0,5);
+      el('lengthRange').value=state.length; el('lengthNum').value=state.length;
+    }
 
     // Materiais
     function calcMateriais(dim, sizes){ const q={}; sizes.sort((a,b)=>b-a); sizes.forEach(s=>q[s]=0); let r=Math.max(0,+dim.toFixed(6));
@@ -222,9 +232,8 @@
       const m = boxMetrics(wrap);
 
       let scale = m.contentW / nW;                      // enche a largura útil
-      const capH = window.innerHeight * VIEWPORT_CAP;   // teto de altura absoluta
+      const capH = window.innerHeight * VIEWPORT_CAP;   // teto de altura
       const totalH = nH * scale + m.padT + m.padB + m.borT + m.borB;
-
       if (totalH > capH) {
         scale = (capH - (m.padT + m.padB + m.borT + m.borB)) / nH;   // reduz para caber
       }
@@ -395,12 +404,12 @@
           const svg  = grid.querySelector('svg');
           if(!svg) return;
 
-          // trava as mesmas larguras usadas na tela
+          // travar as mesmas larguras usadas na tela
           doc.documentElement.style.width = cardW + 'px';
           doc.body.style.width = cardW + 'px';
           cloneCard.style.width = cardW + 'px';
 
-          // aplica exatamente os tamanhos do SVG e do wrapper
+          // aplicar exatamente os tamanhos do SVG e do wrapper
           svg.setAttribute('width',  tW);
           svg.setAttribute('height', tH);
           wrap.style.width = (tW + padL + padR + borL + borR) + 'px';
@@ -440,7 +449,8 @@
     });
 
     // Init
-    (function(){ syncStepsFromWidth(); syncHeight(0); syncLength(0); })();
+    (function(){ syncStepsFromWidth(); syncLength(0); syncHeight(0); })();
   </script>
 </body>
 </html>
+
