@@ -70,7 +70,7 @@
     .checklist-item.off .sw{ opacity:.45 }
     @media (max-width:520px){ .checklist{ grid-template-columns:1fr } }
 
-    /* ⚙️ Depuração via painel */
+    /* ⚙️ Depuração via painel: só texto */
     .debug-gear{ position:fixed; right:14px; bottom:14px; width:48px; height:48px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 6px 18px rgba(0,0,0,.25); opacity:.65; z-index:50; user-select:none; cursor:pointer }
     .debug-gear:hover{ opacity:.9 }
     .debug-panel{ position:fixed; right:14px; bottom:74px; width:min(92vw, 420px); max-height:75vh; overflow:auto; background:#fff; color:#000; border:1px solid #ddd; border-radius:12px; box-shadow:0 10px 22px rgba(0,0,0,.3); padding:12px; z-index:60; display:none }
@@ -170,7 +170,7 @@
   </div>
 
   <script>
-    const VIEWPORT_CAP = 0.8; // limite de altura da prévia
+    const VIEWPORT_CAP = 0.8; // limite de altura da prévia em relação à viewport
 
     const state = { trussWidth:0.25, height:0, length:0, pxPerMeter:100, borderMarginPx:1, lastNW:0, lastNH:0, lastDebug:"" };
     const el = id => document.getElementById(id);
@@ -184,6 +184,13 @@
     const toUnits = m => Math.max(0, Math.floor((m + 1e-9)/STEP));
     const fromUnits = u => u * STEP;
     const quantize = (val, step=STEP) => Number((Math.round(val/step)*step).toFixed(2));
+
+    // 🔧 garantir que o passo dos sliders acompanha o perfil
+    function syncStepsFromWidth(){
+      const q = parseFloat(el('width').value);
+      const stepBase = (q === 0.15) ? 0.05 : 0.25;
+      ['heightRange','lengthRange'].forEach(id=>{ el(id).step = stepBase; });
+    }
 
     function maxConstructiblePieces(targetMeters, sizesMeters){
       const den = sizesMeters.map(s => Math.round(s/STEP));
@@ -323,10 +330,11 @@
       const vQuant = {}; sizes.forEach(s=>vQuant[s]=0); vPieces.forEach(p=>{ vQuant[p.meters] = (vQuant[p.meters]||0) + 1; }); sizes.forEach(s=>{ totals[s] += colunas * (vQuant[s]||0); });
       // horizontais topo+base
       const hQuant = {}; sizes.forEach(s=>hQuant[s]=0); groups.forEach(g=> g.forEach(p=>{ hQuant[p.meters] = (hQuant[p.meters]||0) + 1; })); sizes.forEach(s=>{ totals[s] += 2 * (hQuant[s]||0); });
-      // cantos
-      totals[q] = (totals[q]||0) + 4;
+      // cantos (cantos + tampas dos suportes internos)
+      const internalSupports = Math.max(0, colunas - 2);
+      totals[q] = (totals[q]||0) + 4 + 2 * internalSupports;
 
-      // Swatches
+      // Swatches e ícones
       const sw = (code,side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 ${side} ${side}"><defs><pattern id="p1" patternUnits="userSpaceOnUse" width="12" height="12"><path d="M-3,12 L12,-3 M0,15 L15,0" stroke="rgba(0,0,0,0.22)" stroke-width="4"/></pattern><pattern id="p2" patternUnits="userSpaceOnUse" width="10" height="10"><path d="M0,0 L0,10 M0,0 L10,0" stroke="rgba(0,0,0,0.18)" stroke-width="2"/></pattern><pattern id="p3" patternUnits="userSpaceOnUse" width="16" height="16"><circle cx="5" cy="5" r="2.5" fill="rgba(0,0,0,0.25)"/></pattern><pattern id="p4" patternUnits="userSpaceOnUse" width="16" height="16"><path d="M-4,16 L16,-4 M0,20 L20,0" stroke="rgba(255,255,255,0.28)" stroke-width="3"/></pattern></defs><rect width="${side}" height="${side}" fill="${baseColor(code)}"/><rect width="${side}" height="${side}" fill="url(#${code==='8'?'p1':code==='4'?'p2':code==='2'?'p3':'p4'})"/><rect x="0.5" y="0.5" width="${side-1}" height="${side-1}" fill="none" stroke="#777" stroke-width="1"/></svg>`;
       const footIcon = (side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28"><rect x="5" y="5" width="6" height="16" fill="#555"/><rect x="3" y="20" width="22" height="4" rx="1" ry="1" fill="#333"/><circle cx="8" cy="9" r="2" fill="#999"/><rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/></svg>`;
       const weightIcon = (side=36)=>`<svg xmlns="http://www.w3.org/2000/svg" width="${side}" height="${side}" viewBox="0 0 28 28"><rect x="6" y="12" width="16" height="4" rx="1" ry="1" fill="#444"/><rect x="3" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/><rect x="21" y="9" width="4" height="10" rx="1" ry="1" fill="#666"/><rect x="0.5" y="0.5" width="27" height="27" fill="none" stroke="#777" stroke-width="1"/></svg>`;
@@ -335,7 +343,7 @@
       let list = `<div class=\"results-title\"><span class=\"t-left\">Materiais</span><span class=\"title-rule\"></span><span class=\"t-meta\" id=\"resultsMeta\">${qLabel} ${meta}</span></div><div class=\"checklist\">`;
       const orderedAll = [q, 0.5, 1, 2].sort((a,b)=>a-b);
       orderedAll.forEach(size=>{ const qnt = totals[size] || 0; const code = size>=2?'8':size>=1?'4':size>=0.5?'2':'1'; list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${sw(code,36)}</span><label>${fmtInt(qnt)} unidades de ${fmt(size)} metros</label></div>`; });
-      // usa a variável colunas já criada acima (sem redeclarar)
+      // pés e pesos = número de colunas
       list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${footIcon(36)}</span><label>${fmtInt(colunas)} Pés (0,5)</label></div>`;
       list += `<div class=\"checklist-item\" onclick=\"toggleItem(this)\" role=\"button\" tabindex=\"0\"><span class=\"sw\">${weightIcon(36)}</span><label>${fmtInt(colunas*2)} Pesos</label></div>`;
       list += '</div>';
@@ -395,8 +403,6 @@
 
       gerarGrade(); requestAnimationFrame(gerarGrade);
     }
-
-    function syncStepsFromWidth(){ const q = parseFloat(el('width').value); const stepBase = (q === 0.15) ? 0.05 : 0.25; ['heightRange','lengthRange'].forEach(id=>{ el(id).step = stepBase; }); }
 
     // ====== Eventos ======
     el('debugGear').addEventListener('click', ()=>{ const p=el('debugPanel'); const open = p.getAttribute('aria-hidden')==='false'; if (open){ p.style.display='none'; p.setAttribute('aria-hidden','true'); } else { el('debugText').textContent = state.lastDebug || 'Sem dados ainda. Calcule primeiro.'; p.style.display='block'; p.setAttribute('aria-hidden','false'); } });
